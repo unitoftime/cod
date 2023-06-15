@@ -116,9 +116,17 @@ func (v *Visitor) formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (Stru
 				if f.Names == nil {
 					fmt.Println("UnnamedField: ", f.Type, f.Tag)
 
-					// TODO: doesnt work for sel expressions
-					fIdent := f.Type.(*ast.Ident)
-					name := fIdent.Name
+					// TODO: probably come up with a better way of getting the name
+					name := ""
+					fIdent, ok := f.Type.(*ast.Ident)
+					if ok {
+						name = fIdent.Name
+					}
+					sel, ok := f.Type.(*ast.SelectorExpr)
+					if ok {
+						x := sel.X.(*ast.Ident)
+						name = x.Name + "." + sel.Sel.Name
+					}
 
 					idxDepth := 0
 					field := v.generateField("t." + name, idxDepth+1, f.Type)

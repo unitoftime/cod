@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/unitoftime/cod"
+	"github.com/unitoftime/cod/test/subpackage"
 )
 //go:generate go run ../cmd/cod
 
@@ -31,6 +32,7 @@ type MyUnion cod.Union
 type MyUnionDef struct {
 	Id
 	SpecialMap
+	subpackage.Vec
 }
 
 //cod:struct

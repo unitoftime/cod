@@ -8,55 +8,6 @@ import (
 	"github.com/unitoftime/cod/test/subpackage"
 )
 
-func (t MyStruct) EncodeCod(bs []byte) []byte {
-
-	{
-		bs = backend.WriteVarUint64(bs, uint64(len(t.Vector)))
-		for i1 := range t.Vector {
-
-			bs = t.Vector[i1].EncodeCod(bs)
-		}
-	}
-	return bs
-}
-
-func (t *MyStruct) DecodeCod(bs []byte) (int, error) {
-	var err error
-	var n int
-	var nOff int
-
-	{
-		var length uint64
-		length, nOff, err = backend.ReadVarUint64(bs[n:])
-		if err != nil {
-			return 0, err
-		}
-		n += nOff
-
-		for i1 := 0; i1 < int(length); i1++ {
-			var value1 subpackage.Vec
-
-			{
-				var decoded subpackage.Vec
-				nOff, err = decoded.DecodeCod(bs[n:])
-				if err != nil {
-					return 0, err
-				}
-				n += nOff
-				value1 = decoded
-			}
-
-			if err != nil {
-				return 0, err
-			}
-
-			t.Vector = append(t.Vector, value1)
-		}
-	}
-
-	return n, err
-}
-
 func (t Person) EncodeCod(bs []byte) []byte {
 
 	bs = backend.WriteString(bs, t.Name)
@@ -413,6 +364,10 @@ func (t MyUnion) EncodeCod(bs []byte) []byte {
 		bs = backend.WriteUint8(bs, 2)
 		bs = sv.EncodeCod(bs)
 
+	case subpackage.Vec:
+		bs = backend.WriteUint8(bs, 3)
+		bs = sv.EncodeCod(bs)
+
 	default:
 		panic("unknown type placed in union")
 	}
@@ -449,6 +404,16 @@ func (t *MyUnion) DecodeCod(bs []byte) (int, error) {
 
 	case 2:
 		var decoded SpecialMap
+		nOff, err = decoded.DecodeCod(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+
+		t.Set(decoded)
+
+	case 3:
+		var decoded subpackage.Vec
 		nOff, err = decoded.DecodeCod(bs[n:])
 		if err != nil {
 			return 0, err
@@ -576,6 +541,55 @@ func (t *Id) DecodeCod(bs []byte) (int, error) {
 		return 0, err
 	}
 	n += nOff
+
+	return n, err
+}
+
+func (t MyStruct) EncodeCod(bs []byte) []byte {
+
+	{
+		bs = backend.WriteVarUint64(bs, uint64(len(t.Vector)))
+		for i1 := range t.Vector {
+
+			bs = t.Vector[i1].EncodeCod(bs)
+		}
+	}
+	return bs
+}
+
+func (t *MyStruct) DecodeCod(bs []byte) (int, error) {
+	var err error
+	var n int
+	var nOff int
+
+	{
+		var length uint64
+		length, nOff, err = backend.ReadVarUint64(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+
+		for i1 := 0; i1 < int(length); i1++ {
+			var value1 subpackage.Vec
+
+			{
+				var decoded subpackage.Vec
+				nOff, err = decoded.DecodeCod(bs[n:])
+				if err != nil {
+					return 0, err
+				}
+				n += nOff
+				value1 = decoded
+			}
+
+			if err != nil {
+				return 0, err
+			}
+
+			t.Vector = append(t.Vector, value1)
+		}
+	}
 
 	return n, err
 }
