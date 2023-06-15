@@ -8,6 +8,10 @@ You can then add `//go:generate cod` to one of your go files in your package. Th
 1. Structs: `//cod:struct`
 2. Unions: `//cod:union <CSV List of Unionable Types>`
 
+#### Notables
+1. Generated file is called `cod_encode.go` and will reside in the package you generated from
+2. See below for list of struct method names that are reserved
+
 #### Disclaimers
 1. AST Parsing and code generation is tricky to get right. If you do find a situation where the code is not generated correctly, please let me know by opening an issue.
 2. Map serialization is not deterministic. This is because looping over a map is not deterministic. I can maybe add this in the future if people want it.
