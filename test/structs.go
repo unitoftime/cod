@@ -3,8 +3,15 @@ package main
 import (
 	"github.com/unitoftime/cod"
 	"github.com/unitoftime/cod/test/subpackage"
+	"github.com/unitoftime/cod/test/subpackage/blocked"
 )
 //go:generate go run ../cmd/cod
+
+//cod:struct
+type BlockedStruct struct {
+	Basic blocked.Basic `cod.cast:"uint64"`
+	// Struct blocked.Struct
+}
 
 //cod:struct
 type BlankStruct struct {

@@ -450,11 +450,20 @@ func (f *BasicField) GetType() string {
 }
 
 func (f BasicField) WriteMarshal(buf *bytes.Buffer) {
-	apiName, supported := supportedApis[f.Type]
+	cast := tagSearchCast(f.Tag)
+	fmt.Println("Cast: ", cast)
+
+	apiType := f.Type
+	if cast != "" {
+		apiType = cast
+	}
+
+	apiName, supported := supportedApis[apiType]
 	if supported {
 		err := BasicTemp.ExecuteTemplate(buf, "basic_marshal", map[string]any{
 			"Name": f.Name,
 			"ApiName": apiName,
+			"Cast": cast,
 		})
 		if err != nil { panic(err) }
 	} else {
@@ -467,11 +476,25 @@ func (f BasicField) WriteMarshal(buf *bytes.Buffer) {
 }
 
 func (f BasicField) WriteUnmarshal(buf *bytes.Buffer) {
-	apiName, supported := supportedApis[f.Type]
+	cast := tagSearchCast(f.Tag)
+	fmt.Println("Cast: ", cast)
+
+	apiType := f.Type
+	if cast != "" {
+		// For unmarshal, we reverse the cast with the underlying type, because we need to decode the casted type then cast it to the underlying type
+		apiType = cast
+		cast = f.Type
+	}
+
+	apiName, supported := supportedApis[apiType]
 	if supported {
 		err := BasicTemp.ExecuteTemplate(buf, "basic_unmarshal", map[string]any{
 			"Name": f.Name,
 			"ApiName": apiName,
+			"Type": apiType,
+			"Cast": cast,
+			// "Type": f.GetType(),
+			// "Cast": cast,
 		})
 		if err != nil { panic(err) }
 	} else {
@@ -897,3 +920,25 @@ import (
 }
 
 
+func tagSearchCast(tag string) string {
+	// `bson:"pageId" json:"pageId"`
+	// Example: `cod.cast:"uint64"`
+
+	split := strings.Split(tag, " ")
+
+	// fmt.Println("AAA")
+	// fmt.Println(split)
+	for _, s := range split {
+		s = strings.TrimSpace(s)
+		// fmt.Println(s)
+
+		valQuoted, ok := strings.CutPrefix(s, "`cod.cast:")
+		if !ok { continue }
+		// fmt.Println(valQuoted)
+
+		val := strings.Trim(valQuoted, "\"`")
+		// fmt.Println(val)
+		return val
+	}
+	return ""
+}

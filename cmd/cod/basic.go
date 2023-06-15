@@ -53,14 +53,22 @@ return
 
 	// Standard Types
 	addTemplate("basic_marshal", `
-bs = backend.Write{{.ApiName}}(bs, {{.Name}})
+bs = backend.Write{{.ApiName}}(bs, {{.Cast}}({{.Name}}))
 `)
 
+// {{.Name}}, nOff, err = backend.Read{{.ApiName}}(bs[n:])
+// if err != nil { return 0, err }
+// n += nOff
 	addTemplate("basic_unmarshal", `
-{{.Name}}, nOff, err = backend.Read{{.ApiName}}(bs[n:])
+{
+var decoded {{.Type}}
+decoded, nOff, err = backend.Read{{.ApiName}}(bs[n:])
 if err != nil { return 0, err }
 n += nOff
+{{.Name}} = {{.Cast}}(decoded)
+}
 `)
+
 
 	// Struct
 	addTemplate("struct_marshal", `

@@ -3,9 +3,11 @@ package main
 import (
 	"github.com/unitoftime/cod/backend"
 
-	"github.com/unitoftime/cod/test/subpackage"
+	"github.com/unitoftime/cod/test/subpackage/blocked"
 
 	"github.com/unitoftime/cod"
+
+	"github.com/unitoftime/cod/test/subpackage"
 )
 
 func (t BlankStruct) EncodeCod(bs []byte) []byte {
@@ -18,21 +20,21 @@ func (t *BlankStruct) DecodeCod(bs []byte) (n int, err error) {
 
 func (t Person) EncodeCod(bs []byte) []byte {
 
-	bs = backend.WriteString(bs, t.Name)
+	bs = backend.WriteString(bs, (t.Name))
 
-	bs = backend.WriteUint8(bs, t.Age)
+	bs = backend.WriteUint8(bs, (t.Age))
 
 	bs = t.Id.EncodeCod(bs)
 	for i1 := range t.Array {
 
-		bs = backend.WriteVarUint16(bs, t.Array[i1])
+		bs = backend.WriteVarUint16(bs, (t.Array[i1]))
 
 	}
 	{
 		bs = backend.WriteVarUint64(bs, uint64(len(t.Slice)))
 		for i1 := range t.Slice {
 
-			bs = backend.WriteVarUint32(bs, t.Slice[i1])
+			bs = backend.WriteVarUint32(bs, (t.Slice[i1]))
 
 		}
 	}
@@ -44,7 +46,7 @@ func (t Person) EncodeCod(bs []byte) []byte {
 				bs = backend.WriteVarUint64(bs, uint64(len(t.DoubleSlice[i1])))
 				for i2 := range t.DoubleSlice[i1] {
 
-					bs = backend.WriteUint8(bs, t.DoubleSlice[i1][i2])
+					bs = backend.WriteUint8(bs, (t.DoubleSlice[i1][i2]))
 
 				}
 			}
@@ -55,13 +57,13 @@ func (t Person) EncodeCod(bs []byte) []byte {
 
 		for k1, v1 := range t.Map {
 
-			bs = backend.WriteString(bs, k1)
+			bs = backend.WriteString(bs, (k1))
 
 			{
 				bs = backend.WriteVarUint64(bs, uint64(len(v1)))
 				for i2 := range v1 {
 
-					bs = backend.WriteVarUint64(bs, v1[i2])
+					bs = backend.WriteVarUint64(bs, (v1[i2]))
 
 				}
 			}
@@ -73,20 +75,20 @@ func (t Person) EncodeCod(bs []byte) []byte {
 
 		for k1, v1 := range t.MultiMap {
 
-			bs = backend.WriteString(bs, k1)
+			bs = backend.WriteString(bs, (k1))
 
 			{
 				bs = backend.WriteVarUint64(bs, uint64(len(v1)))
 
 				for k2, v2 := range v1 {
 
-					bs = backend.WriteVarUint32(bs, k2)
+					bs = backend.WriteVarUint32(bs, (k2))
 
 					{
 						bs = backend.WriteVarUint64(bs, uint64(len(v2)))
 						for i3 := range v2 {
 
-							bs = backend.WriteUint8(bs, v2[i3])
+							bs = backend.WriteUint8(bs, (v2[i3]))
 
 						}
 					}
@@ -105,17 +107,25 @@ func (t *Person) DecodeCod(bs []byte) (int, error) {
 	var n int
 	var nOff int
 
-	t.Name, nOff, err = backend.ReadString(bs[n:])
-	if err != nil {
-		return 0, err
+	{
+		var decoded string
+		decoded, nOff, err = backend.ReadString(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+		t.Name = (decoded)
 	}
-	n += nOff
 
-	t.Age, nOff, err = backend.ReadUint8(bs[n:])
-	if err != nil {
-		return 0, err
+	{
+		var decoded uint8
+		decoded, nOff, err = backend.ReadUint8(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+		t.Age = (decoded)
 	}
-	n += nOff
 
 	{
 		var decoded Id
@@ -129,11 +139,15 @@ func (t *Person) DecodeCod(bs []byte) (int, error) {
 
 	for i1 := range t.Array {
 
-		t.Array[i1], nOff, err = backend.ReadVarUint16(bs[n:])
-		if err != nil {
-			return 0, err
+		{
+			var decoded uint16
+			decoded, nOff, err = backend.ReadVarUint16(bs[n:])
+			if err != nil {
+				return 0, err
+			}
+			n += nOff
+			t.Array[i1] = (decoded)
 		}
-		n += nOff
 
 		if err != nil {
 			return 0, err
@@ -150,11 +164,15 @@ func (t *Person) DecodeCod(bs []byte) (int, error) {
 		for i1 := 0; i1 < int(length); i1++ {
 			var value1 uint32
 
-			value1, nOff, err = backend.ReadVarUint32(bs[n:])
-			if err != nil {
-				return 0, err
+			{
+				var decoded uint32
+				decoded, nOff, err = backend.ReadVarUint32(bs[n:])
+				if err != nil {
+					return 0, err
+				}
+				n += nOff
+				value1 = (decoded)
 			}
-			n += nOff
 
 			if err != nil {
 				return 0, err
@@ -185,11 +203,15 @@ func (t *Person) DecodeCod(bs []byte) (int, error) {
 				for i2 := 0; i2 < int(length); i2++ {
 					var value2 uint8
 
-					value2, nOff, err = backend.ReadUint8(bs[n:])
-					if err != nil {
-						return 0, err
+					{
+						var decoded uint8
+						decoded, nOff, err = backend.ReadUint8(bs[n:])
+						if err != nil {
+							return 0, err
+						}
+						n += nOff
+						value2 = (decoded)
 					}
-					n += nOff
 
 					if err != nil {
 						return 0, err
@@ -221,11 +243,15 @@ func (t *Person) DecodeCod(bs []byte) (int, error) {
 			var key1 string
 			var val1 []uint64
 
-			key1, nOff, err = backend.ReadString(bs[n:])
-			if err != nil {
-				return 0, err
+			{
+				var decoded string
+				decoded, nOff, err = backend.ReadString(bs[n:])
+				if err != nil {
+					return 0, err
+				}
+				n += nOff
+				key1 = (decoded)
 			}
-			n += nOff
 
 			{
 				var length uint64
@@ -238,11 +264,15 @@ func (t *Person) DecodeCod(bs []byte) (int, error) {
 				for i2 := 0; i2 < int(length); i2++ {
 					var value2 uint64
 
-					value2, nOff, err = backend.ReadVarUint64(bs[n:])
-					if err != nil {
-						return 0, err
+					{
+						var decoded uint64
+						decoded, nOff, err = backend.ReadVarUint64(bs[n:])
+						if err != nil {
+							return 0, err
+						}
+						n += nOff
+						value2 = (decoded)
 					}
-					n += nOff
 
 					if err != nil {
 						return 0, err
@@ -274,11 +304,15 @@ func (t *Person) DecodeCod(bs []byte) (int, error) {
 			var key1 string
 			var val1 map[uint32][]uint8
 
-			key1, nOff, err = backend.ReadString(bs[n:])
-			if err != nil {
-				return 0, err
+			{
+				var decoded string
+				decoded, nOff, err = backend.ReadString(bs[n:])
+				if err != nil {
+					return 0, err
+				}
+				n += nOff
+				key1 = (decoded)
 			}
-			n += nOff
 
 			{
 				var length uint64
@@ -296,11 +330,15 @@ func (t *Person) DecodeCod(bs []byte) (int, error) {
 					var key2 uint32
 					var val2 []uint8
 
-					key2, nOff, err = backend.ReadVarUint32(bs[n:])
-					if err != nil {
-						return 0, err
+					{
+						var decoded uint32
+						decoded, nOff, err = backend.ReadVarUint32(bs[n:])
+						if err != nil {
+							return 0, err
+						}
+						n += nOff
+						key2 = (decoded)
 					}
-					n += nOff
 
 					{
 						var length uint64
@@ -313,11 +351,15 @@ func (t *Person) DecodeCod(bs []byte) (int, error) {
 						for i3 := 0; i3 < int(length); i3++ {
 							var value3 uint8
 
-							value3, nOff, err = backend.ReadUint8(bs[n:])
-							if err != nil {
-								return 0, err
+							{
+								var decoded uint8
+								decoded, nOff, err = backend.ReadUint8(bs[n:])
+								if err != nil {
+									return 0, err
+								}
+								n += nOff
+								value3 = (decoded)
 							}
-							n += nOff
 
 							if err != nil {
 								return 0, err
@@ -447,13 +489,13 @@ func (t SpecialMap) EncodeCod(bs []byte) []byte {
 
 			for k1, v1 := range value0 {
 
-				bs = backend.WriteString(bs, k1)
+				bs = backend.WriteString(bs, (k1))
 
 				{
 					bs = backend.WriteVarUint64(bs, uint64(len(v1)))
 					for i2 := range v1 {
 
-						bs = backend.WriteUint8(bs, v1[i2])
+						bs = backend.WriteUint8(bs, (v1[i2]))
 
 					}
 				}
@@ -489,11 +531,15 @@ func (t *SpecialMap) DecodeCod(bs []byte) (int, error) {
 				var key1 string
 				var val1 []uint8
 
-				key1, nOff, err = backend.ReadString(bs[n:])
-				if err != nil {
-					return 0, err
+				{
+					var decoded string
+					decoded, nOff, err = backend.ReadString(bs[n:])
+					if err != nil {
+						return 0, err
+					}
+					n += nOff
+					key1 = (decoded)
 				}
-				n += nOff
 
 				{
 					var length uint64
@@ -506,11 +552,15 @@ func (t *SpecialMap) DecodeCod(bs []byte) (int, error) {
 					for i2 := 0; i2 < int(length); i2++ {
 						var value2 uint8
 
-						value2, nOff, err = backend.ReadUint8(bs[n:])
-						if err != nil {
-							return 0, err
+						{
+							var decoded uint8
+							decoded, nOff, err = backend.ReadUint8(bs[n:])
+							if err != nil {
+								return 0, err
+							}
+							n += nOff
+							value2 = (decoded)
 						}
-						n += nOff
 
 						if err != nil {
 							return 0, err
@@ -534,7 +584,7 @@ func (t *SpecialMap) DecodeCod(bs []byte) (int, error) {
 
 func (t Id) EncodeCod(bs []byte) []byte {
 
-	bs = backend.WriteVarUint16(bs, t.Val)
+	bs = backend.WriteVarUint16(bs, (t.Val))
 
 	return bs
 }
@@ -544,11 +594,15 @@ func (t *Id) DecodeCod(bs []byte) (int, error) {
 	var n int
 	var nOff int
 
-	t.Val, nOff, err = backend.ReadVarUint16(bs[n:])
-	if err != nil {
-		return 0, err
+	{
+		var decoded uint16
+		decoded, nOff, err = backend.ReadVarUint16(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+		t.Val = (decoded)
 	}
-	n += nOff
 
 	return n, err
 }
@@ -597,6 +651,31 @@ func (t *MyStruct) DecodeCod(bs []byte) (int, error) {
 
 			t.Vector = append(t.Vector, value1)
 		}
+	}
+
+	return n, err
+}
+
+func (t BlockedStruct) EncodeCod(bs []byte) []byte {
+
+	bs = backend.WriteVarUint64(bs, uint64(t.Basic))
+
+	return bs
+}
+
+func (t *BlockedStruct) DecodeCod(bs []byte) (int, error) {
+	var err error
+	var n int
+	var nOff int
+
+	{
+		var decoded uint64
+		decoded, nOff, err = backend.ReadVarUint64(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+		t.Basic = blocked.Basic(decoded)
 	}
 
 	return n, err

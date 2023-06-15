@@ -4,7 +4,25 @@ import (
 	"testing"
 
 	"github.com/unitoftime/cod/test/subpackage"
+	"github.com/unitoftime/cod/test/subpackage/blocked"
 )
+
+func TestBlockedStruct(t *testing.T) {
+	d := BlockedStruct{
+		Basic: blocked.Basic(1),
+	}
+
+	res := BlockedStruct{}
+
+	bs := []byte{}
+	bs = d.EncodeCod(bs)
+	_, err := res.DecodeCod(bs)
+	if err != nil { panic(err) }
+
+	t.Log(d)
+	t.Log(res)
+}
+
 
 func TestBlankStruct(t *testing.T) {
 	d := BlankStruct{}

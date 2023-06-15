@@ -6,9 +6,9 @@ import (
 
 func (t Vec) EncodeCod(bs []byte) []byte {
 
-	bs = backend.WriteVarUint64(bs, t.X)
+	bs = backend.WriteVarUint64(bs, (t.X))
 
-	bs = backend.WriteVarUint64(bs, t.Y)
+	bs = backend.WriteVarUint64(bs, (t.Y))
 
 	return bs
 }
@@ -18,17 +18,25 @@ func (t *Vec) DecodeCod(bs []byte) (int, error) {
 	var n int
 	var nOff int
 
-	t.X, nOff, err = backend.ReadVarUint64(bs[n:])
-	if err != nil {
-		return 0, err
+	{
+		var decoded uint64
+		decoded, nOff, err = backend.ReadVarUint64(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+		t.X = (decoded)
 	}
-	n += nOff
 
-	t.Y, nOff, err = backend.ReadVarUint64(bs[n:])
-	if err != nil {
-		return 0, err
+	{
+		var decoded uint64
+		decoded, nOff, err = backend.ReadVarUint64(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+		t.Y = (decoded)
 	}
-	n += nOff
 
 	return n, err
 }
