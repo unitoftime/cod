@@ -1,7 +1,7 @@
 Cod is a schemaless serialization library for generating serialization code for your structs. This is for generating code that encodes and decodes data as quickly as possible. By default we use variable length encoding for all unsigned and signed integers larger than 16 bits.
 
 ### Install
-You just need to run this to get the binary: `go install github.com/unitoftime/cod`
+You just need to run this to get the binary: `go install github.com/unitoftime/cod/cmd/cod`
 You will also need to add ~/go/bin/ (or windows equivalent is) to your path so you can reference binaries from there
 
 You can then add `//go:generate cod` to one of your go files in your package. This will run the cod binary every time you execute `go generate`. Finally you can tag structures that you want to generate code for as follows:

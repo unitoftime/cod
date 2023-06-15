@@ -85,12 +85,12 @@ func formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (StructData, bool)
 				return structData, false
 			}
 
-			fmt.Println("TypeSpec: ", s.Name.Name)
+			// fmt.Println("TypeSpec: ", s.Name.Name)
 			structData.Name = s.Name.Name
 			structData.Directive = directive
 			structData.DirectiveCSV = directiveCSV
 
-			fmt.Printf("Struct Type: %T\n", s.Type)
+			// fmt.Printf("Struct Type: %T\n", s.Type)
 			sType, ok := s.Type.(*ast.StructType)
 			if !ok {
 				// Not a struct, then its an alias. So handle that if we can
@@ -108,8 +108,8 @@ func formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (StructData, bool)
 
 			for _, f := range sType.Fields.List {
 				for _, n := range f.Names {
-					fmt.Println("Field: ", n.Name, f.Type, f.Tag)
-					fmt.Printf("%T\n", f.Type)
+					// fmt.Println("Field: ", n.Name, f.Type, f.Tag)
+					// fmt.Printf("%T\n", f.Type)
 
 					field := generateField("t." + n.Name, 0, f.Type)
 					if f.Tag != nil {
@@ -129,7 +129,7 @@ func formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (StructData, bool)
 func generateField(name string, idxDepth int, node ast.Node) Field {
 	switch expr := node.(type) {
 	case *ast.Ident:
-		fmt.Println("Ident: ", expr.Name)
+		// fmt.Println("Ident: ", expr.Name)
 		field := &BasicField{
 			Name: name,
 			Type: expr.Name,
@@ -146,7 +146,7 @@ func generateField(name string, idxDepth int, node ast.Node) Field {
 	// 	}
 
 	case *ast.ArrayType:
-		fmt.Printf("ARRAY %T %T\n", expr.Len, expr.Elt)
+		// fmt.Printf("ARRAY %T %T\n", expr.Len, expr.Elt)
 
 		if expr.Len == nil {
 			idxString := fmt.Sprintf("[i%d]", idxDepth)
@@ -173,7 +173,7 @@ func generateField(name string, idxDepth int, node ast.Node) Field {
 		}
 
 	case *ast.MapType:
-		fmt.Printf("MAP %T %T\n", expr.Key, expr.Value)
+		// fmt.Printf("MAP %T %T\n", expr.Key, expr.Value)
 		keyString := fmt.Sprintf("[k%d]", idxDepth)
 		valString := fmt.Sprintf("[v%d]", idxDepth)
 		key := generateField(name + keyString, idxDepth + 1, expr.Key)
@@ -186,7 +186,7 @@ func generateField(name string, idxDepth int, node ast.Node) Field {
 		}
 	case *ast.SelectorExpr:
 		// Note: anything that is a selector expression (ie phy.Position) is guaranteed to be a struct. so it must implement the required struct interface
-		fmt.Printf("SEL: %T\n", expr.X)
+		// fmt.Printf("SEL: %T\n", expr.X)
 		field := &BasicField{
 			Name: name,
 			Type: "UNKNOWN_SELECTOR_EXPR", // This will force it to resolve to the struct marshaller
@@ -365,7 +365,7 @@ func (f BasicField) WriteMarshal(buf *bytes.Buffer) {
 		})
 		if err != nil { panic(err) }
 	} else {
-		fmt.Println("Found Struct: ", f.Name)
+		// fmt.Println("Found Struct: ", f.Name)
 		err := BasicTemp.ExecuteTemplate(buf, "struct_marshal", map[string]any{
 			"Name": f.Name,
 		})
@@ -382,7 +382,7 @@ func (f BasicField) WriteUnmarshal(buf *bytes.Buffer) {
 		})
 		if err != nil { panic(err) }
 	} else {
-		fmt.Println("Found Struct: ", f.Name)
+		// fmt.Println("Found Struct: ", f.Name)
 		err := BasicTemp.ExecuteTemplate(buf, "struct_unmarshal", map[string]any{
 			"Name": f.Name,
 		})
@@ -492,7 +492,7 @@ func (f SliceField) WriteUnmarshal(buf *bytes.Buffer) {
 	f.Field.SetName(varName)
 	f.Field.WriteUnmarshal(innerBuf)
 
-	fmt.Println("GETTYPE: ", f.Field.GetType())
+	// fmt.Println("GETTYPE: ", f.Field.GetType())
 	err := BasicTemp.ExecuteTemplate(buf, "slice_unmarshal", map[string]any{
 		"Name": f.Name,
 		"VarName": varName,
@@ -553,7 +553,7 @@ func (f MapField) WriteUnmarshal(buf *bytes.Buffer) {
 	f.Val.SetName(valVarName)
 	f.Val.WriteUnmarshal(innerBuf)
 
-	fmt.Println("GETTYPE: ", f.GetType(), f.Key.GetType(), f.Val.GetType())
+	// fmt.Println("GETTYPE: ", f.GetType(), f.Key.GetType(), f.Val.GetType())
 	err := BasicTemp.ExecuteTemplate(buf, "map_unmarshal", map[string]any{
 		"Name": f.Name,
 		"Type": f.GetType(),
@@ -611,7 +611,7 @@ func (f AliasField) WriteUnmarshal(buf *bytes.Buffer) {
 	f.Field.SetName(valName)
 	f.Field.WriteUnmarshal(innerBuf)
 
-	fmt.Println("ALIAS_GETTYPE: ", f.GetType(), f.Field.GetType())
+	// fmt.Println("ALIAS_GETTYPE: ", f.GetType(), f.Field.GetType())
 	err := BasicTemp.ExecuteTemplate(buf, "alias_unmarshal", map[string]any{
 		"Name": f.Name,
 		"AliasType": f.AliasType,
@@ -684,7 +684,7 @@ import (
 		marshBuf.Reset()
 		unmarshBuf.Reset()
 
-		fmt.Println("Struct: ", sd)
+		fmt.Println("Struct: ", sd.Name)
 
 		// Write the marshal code
 		sd.WriteStructMarshal(marshBuf)

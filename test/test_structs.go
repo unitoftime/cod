@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/unitoftime/cod"
 )
-//go:generate go run ../cmd
+//go:generate go run ../cmd/cod
 
 //cod:struct
 type Person struct {
