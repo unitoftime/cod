@@ -669,13 +669,29 @@ return n, err
 `)
 	if err != nil { panic(err) }
 
+	importCod := false
+	for _, sd := range v.structs {
+		if sd.Directive == DirectiveUnion {
+			importCod = true
+			break
+		}
+	}
+
 	buf := bytes.NewBuffer([]byte{})
 	buf.WriteString("package " + v.pkg.Name)
-	buf.WriteString(`
+
+	if importCod {
+		buf.WriteString(`
 import (
 	"github.com/unitoftime/cod"
 	"github.com/unitoftime/cod/backend"
 )`)
+	} else {
+		buf.WriteString(`
+import (
+	"github.com/unitoftime/cod/backend"
+)`)
+	}
 
 
 	marshBuf := bytes.NewBuffer([]byte{})
