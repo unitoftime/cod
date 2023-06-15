@@ -66,7 +66,7 @@ for {{.Index}} := range {{.Name}} {
 	addTemplate("slice_unmarshal", `
 {
   var length uint64
-	length, nOff, err := backend.ReadVarUint64(bs[n:])
+	length, nOff, err = backend.ReadVarUint64(bs[n:])
 	if err != nil { return 0, err }
   n += nOff
 

@@ -1,8 +1,11 @@
 package main
 
 import (
-	"github.com/unitoftime/cod"
 	"github.com/unitoftime/cod/backend"
+
+	"github.com/unitoftime/cod"
+
+	"github.com/unitoftime/cod/test/subpackage"
 )
 
 func (t Person) EncodeCod(bs []byte) []byte {
@@ -123,7 +126,7 @@ func (t *Person) DecodeCod(bs []byte) (int, error) {
 	}
 	{
 		var length uint64
-		length, nOff, err := backend.ReadVarUint64(bs[n:])
+		length, nOff, err = backend.ReadVarUint64(bs[n:])
 		if err != nil {
 			return 0, err
 		}
@@ -147,7 +150,7 @@ func (t *Person) DecodeCod(bs []byte) (int, error) {
 	}
 	{
 		var length uint64
-		length, nOff, err := backend.ReadVarUint64(bs[n:])
+		length, nOff, err = backend.ReadVarUint64(bs[n:])
 		if err != nil {
 			return 0, err
 		}
@@ -158,7 +161,7 @@ func (t *Person) DecodeCod(bs []byte) (int, error) {
 
 			{
 				var length uint64
-				length, nOff, err := backend.ReadVarUint64(bs[n:])
+				length, nOff, err = backend.ReadVarUint64(bs[n:])
 				if err != nil {
 					return 0, err
 				}
@@ -211,7 +214,7 @@ func (t *Person) DecodeCod(bs []byte) (int, error) {
 
 			{
 				var length uint64
-				length, nOff, err := backend.ReadVarUint64(bs[n:])
+				length, nOff, err = backend.ReadVarUint64(bs[n:])
 				if err != nil {
 					return 0, err
 				}
@@ -286,7 +289,7 @@ func (t *Person) DecodeCod(bs []byte) (int, error) {
 
 					{
 						var length uint64
-						length, nOff, err := backend.ReadVarUint64(bs[n:])
+						length, nOff, err = backend.ReadVarUint64(bs[n:])
 						if err != nil {
 							return 0, err
 						}
@@ -459,7 +462,7 @@ func (t *SpecialMap) DecodeCod(bs []byte) (int, error) {
 
 				{
 					var length uint64
-					length, nOff, err := backend.ReadVarUint64(bs[n:])
+					length, nOff, err = backend.ReadVarUint64(bs[n:])
 					if err != nil {
 						return 0, err
 					}
@@ -511,6 +514,48 @@ func (t *Id) DecodeCod(bs []byte) (int, error) {
 		return 0, err
 	}
 	n += nOff
+
+	return n, err
+}
+
+func (t MyStruct) EncodeCod(bs []byte) []byte {
+
+	{
+		bs = backend.WriteVarUint64(bs, uint64(len(t.Vector)))
+		for i0 := range t.Vector {
+
+			bs = t.Vector[i0].EncodeCod(bs)
+		}
+	}
+	return bs
+}
+
+func (t *MyStruct) DecodeCod(bs []byte) (int, error) {
+	var err error
+	var n int
+	var nOff int
+
+	{
+		var length uint64
+		length, nOff, err = backend.ReadVarUint64(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+
+		for i0 := 0; i0 < int(length); i0++ {
+			var value0 subpackage.Vec
+
+			nOff, err = value0.DecodeCod(bs[n:])
+			n += nOff
+
+			if err != nil {
+				return 0, err
+			}
+
+			t.Vector = append(t.Vector, value0)
+		}
+	}
 
 	return n, err
 }

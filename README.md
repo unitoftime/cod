@@ -1,3 +1,5 @@
+`Warning: This package is a work in progress`
+
 Cod is a schemaless serialization library for generating serialization code for your structs. This is for generating code that encodes and decodes data as quickly as possible. By default we use variable length encoding for all unsigned and signed integers larger than 16 bits.
 
 ### Install

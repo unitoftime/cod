@@ -14,6 +14,7 @@ import (
 	"go/format"
 	"text/template"
 	"strconv"
+	"path/filepath"
 
 
 	// _ "embed"
@@ -57,6 +58,8 @@ func generatePackage(dir string) {
 			fset: fset,
 			// lastCommentPos: &tokenStart,
 			structs: make(map[string]StructData),
+			imports: make(map[string]string),
+			usedImports: make(map[string]bool),
 		}
 
 		// We start walking our Visitor `bv` through the AST in a depth-first way.
@@ -65,7 +68,7 @@ func generatePackage(dir string) {
 		bv.Output("cod_encode.go")
 	}
 }
-func formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (StructData, bool) {
+func (v *Visitor) formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (StructData, bool) {
 	structData := StructData{}
 
 	// Skip everything that isn't a type. we can only generate for types
@@ -77,7 +80,6 @@ func formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (StructData, bool)
 	fields := make([]Field, 0)
 
 	for _, spec := range decl.Specs {
-
 		switch s := spec.(type) {
 		case *ast.TypeSpec:
 			directive, directiveCSV := getDirective(decl)
@@ -96,7 +98,7 @@ func formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (StructData, bool)
 				// Not a struct, then its an alias. So handle that if we can
 				name := "t"
 				idxDepth := 0
-				field := generateField(name, idxDepth+1, s.Type)
+				field := v.generateField(name, idxDepth+1, s.Type)
 				fields = append(fields, &AliasField{
 					Name: name,
 					AliasType: s.Name.Name,
@@ -111,7 +113,7 @@ func formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (StructData, bool)
 					// fmt.Println("Field: ", n.Name, f.Type, f.Tag)
 					// fmt.Printf("%T\n", f.Type)
 
-					field := generateField("t." + n.Name, 0, f.Type)
+					field := v.generateField("t." + n.Name, 0, f.Type)
 					if f.Tag != nil {
 						field.SetTag(f.Tag.Value)
 					}
@@ -126,7 +128,7 @@ func formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (StructData, bool)
 	return structData, true
 }
 
-func generateField(name string, idxDepth int, node ast.Node) Field {
+func (v *Visitor) generateField(name string, idxDepth int, node ast.Node) Field {
 	switch expr := node.(type) {
 	case *ast.Ident:
 		// fmt.Println("Ident: ", expr.Name)
@@ -150,7 +152,7 @@ func generateField(name string, idxDepth int, node ast.Node) Field {
 
 		if expr.Len == nil {
 			idxString := fmt.Sprintf("[i%d]", idxDepth)
-			field := generateField(name + idxString, idxDepth + 1, expr.Elt)
+			field := v.generateField(name + idxString, idxDepth + 1, expr.Elt)
 			return &SliceField{
 				Name: name,
 				// Type: field.GetType(),
@@ -159,7 +161,7 @@ func generateField(name string, idxDepth int, node ast.Node) Field {
 			}
 		} else {
 			idxString := fmt.Sprintf("[i%d]", idxDepth)
-			field := generateField(name + idxString, idxDepth + 1, expr.Elt)
+			field := v.generateField(name + idxString, idxDepth + 1, expr.Elt)
 
 			lString := expr.Len.(*ast.BasicLit).Value
 			length, err := strconv.Atoi(lString)
@@ -176,8 +178,8 @@ func generateField(name string, idxDepth int, node ast.Node) Field {
 		// fmt.Printf("MAP %T %T\n", expr.Key, expr.Value)
 		keyString := fmt.Sprintf("[k%d]", idxDepth)
 		valString := fmt.Sprintf("[v%d]", idxDepth)
-		key := generateField(name + keyString, idxDepth + 1, expr.Key)
-		val := generateField(name + valString, idxDepth + 1, expr.Value)
+		key := v.generateField(name + keyString, idxDepth + 1, expr.Key)
+		val := v.generateField(name + valString, idxDepth + 1, expr.Value)
 		return &MapField{
 			Name: name,
 			Key: key,
@@ -186,11 +188,17 @@ func generateField(name string, idxDepth int, node ast.Node) Field {
 		}
 	case *ast.SelectorExpr:
 		// Note: anything that is a selector expression (ie phy.Position) is guaranteed to be a struct. so it must implement the required struct interface
-		// fmt.Printf("SEL: %T\n", expr.X)
+		fmt.Printf("SELECTOREXPR: %T %T\n", expr.X, expr.Sel)
+		x := expr.X.(*ast.Ident)
+		fmt.Println("SELECTOREXPR:", x.Name, expr.Sel.Name)
 		field := &BasicField{
 			Name: name,
-			Type: "UNKNOWN_SELECTOR_EXPR", // This will force it to resolve to the struct marshaller
+			// Type: "UNKNOWN_SELECTOR_EXPR", // This will force it to resolve to the struct marshaller
+			Type: x.Name + "." + expr.Sel.Name, // This will force it to resolve to the struct marshaller
 		}
+
+		v.usedImports[x.Name] = true // Store the import name so we can pull it later
+
 		return field
 
 	default:
@@ -236,10 +244,14 @@ type Visitor struct {
 	cmap ast.CommentMap // The comment map of the file we are processing
 
 	structs map[string]StructData
+	imports map[string]string // Maps a selector source to a package path
+	usedImports map[string]bool // List of encoded selector expressions
 }
 
 func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 	if node == nil { return nil }
+
+	// fmt.Printf("Node: %T\n", node)
 
 	// If we are a package, then just keep searching
 	_, ok := node.(*ast.Package)
@@ -250,6 +262,21 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 	if ok {
 		v.file = file
 		v.cmap = ast.NewCommentMap(v.fset, file, file.Comments)
+
+		for _, importSpec := range file.Imports {
+			fmt.Println("IMPORT SPEC: ", importSpec)
+			path := importSpec.Path.Value
+
+			name := strings.TrimSuffix(filepath.Base(path), `"`)
+
+			// If there was a custom name, use that
+			nameIdent := importSpec.Name
+			if nameIdent != nil {
+				name = nameIdent.Name
+			}
+			fmt.Println("IMPORT: ", name, path)
+			v.imports[name] = path
+		}
 		return v
 	}
 
@@ -262,7 +289,7 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 	gen, ok := node.(*ast.GenDecl)
 	if ok {
 		cgroups := v.cmap.Filter(gen).Comments()
-		sd, ok := formatGen(*gen, cgroups)
+		sd, ok := v.formatGen(*gen, cgroups)
 		if ok {
 			v.structs[sd.Name] = sd
 		}
@@ -679,20 +706,29 @@ return n, err
 
 	buf := bytes.NewBuffer([]byte{})
 	buf.WriteString("package " + v.pkg.Name)
+		buf.WriteString(`
+import (
+	"github.com/unitoftime/cod/backend"
+`)
 
 	if importCod {
 		buf.WriteString(`
-import (
 	"github.com/unitoftime/cod"
-	"github.com/unitoftime/cod/backend"
-)`)
-	} else {
-		buf.WriteString(`
-import (
-	"github.com/unitoftime/cod/backend"
-)`)
+`)
 	}
 
+	for k := range v.usedImports {
+		if k == "cod" { continue }
+		fmt.Println("Used Import: ", k)
+		path, ok := v.imports[k]
+		fmt.Println("Used Import: ", k, path, ok)
+		if !ok {
+			panic("couldnt find import!")
+		}
+		buf.WriteString("\n"+path+"\n")
+	}
+		buf.WriteString(`
+)`)
 
 	marshBuf := bytes.NewBuffer([]byte{})
 	unmarshBuf := bytes.NewBuffer([]byte{})

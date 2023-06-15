@@ -3,8 +3,27 @@ package main
 import (
 	"testing"
 
-	// "github.com/unitoftime/flow/cod"
+	"github.com/unitoftime/cod/test/subpackage"
 )
+
+func TestSubPackage(t *testing.T) {
+	d := MyStruct{
+		Vector: []subpackage.Vec{
+			subpackage.Vec{1, 2},
+			subpackage.Vec{3, 4},
+		},
+	}
+
+	res := MyStruct{}
+
+	bs := []byte{}
+	bs = d.EncodeCod(bs)
+	_, err := res.DecodeCod(bs)
+	if err != nil { panic(err) }
+
+	t.Log(d)
+	t.Log(res)
+}
 
 func TestPerson(t *testing.T) {
 	d := Person{
