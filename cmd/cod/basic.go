@@ -20,11 +20,11 @@ func init() {
 
 	// Standard Types
 	addTemplate("basic_marshal", `
-bs = backend.Write{{.Type}}(bs, {{.Name}})
+bs = backend.Write{{.ApiName}}(bs, {{.Name}})
 `)
 
 	addTemplate("basic_unmarshal", `
-{{.Name}}, nOff, err = backend.Read{{.Type}}(bs[n:])
+{{.Name}}, nOff, err = backend.Read{{.ApiName}}(bs[n:])
 if err != nil { return 0, err }
 n += nOff
 `)
@@ -34,8 +34,13 @@ n += nOff
 bs = {{.Name}}.EncodeCod(bs)`)
 
 	addTemplate("struct_unmarshal", `
-nOff, err = {{.Name}}.DecodeCod(bs[n:])
+{
+var decoded {{.Type}}
+nOff, err = decoded.DecodeCod(bs[n:])
+if err != nil { return 0, err }
 n += nOff
+{{.Name}} = decoded
+}
 `)
 
 	// TODO: could also unroll the loop here?

@@ -109,8 +109,15 @@ func (t *Person) DecodeCod(bs []byte) (int, error) {
 	}
 	n += nOff
 
-	nOff, err = t.Id.DecodeCod(bs[n:])
-	n += nOff
+	{
+		var decoded Id
+		nOff, err = decoded.DecodeCod(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+		t.Id = decoded
+	}
 
 	for i0 := range t.Array {
 
@@ -325,8 +332,15 @@ func (t *Person) DecodeCod(bs []byte) (int, error) {
 			t.MultiMap[key0] = val0
 		}
 	}
-	nOff, err = t.MyUnion.DecodeCod(bs[n:])
-	n += nOff
+	{
+		var decoded MyUnion
+		nOff, err = decoded.DecodeCod(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+		t.MyUnion = decoded
+	}
 
 	return n, err
 }
@@ -546,8 +560,15 @@ func (t *MyStruct) DecodeCod(bs []byte) (int, error) {
 		for i0 := 0; i0 < int(length); i0++ {
 			var value0 subpackage.Vec
 
-			nOff, err = value0.DecodeCod(bs[n:])
-			n += nOff
+			{
+				var decoded subpackage.Vec
+				nOff, err = decoded.DecodeCod(bs[n:])
+				if err != nil {
+					return 0, err
+				}
+				n += nOff
+				value0 = decoded
+			}
 
 			if err != nil {
 				return 0, err

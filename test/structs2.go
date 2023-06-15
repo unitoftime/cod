@@ -7,4 +7,5 @@ import (
 //cod:struct
 type MyStruct struct {
 	Vector []subpackage.Vec
+	// Vector subpackage.Vec
 }

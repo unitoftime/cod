@@ -388,7 +388,7 @@ func (f BasicField) WriteMarshal(buf *bytes.Buffer) {
 	if supported {
 		err := BasicTemp.ExecuteTemplate(buf, "basic_marshal", map[string]any{
 			"Name": f.Name,
-			"Type": apiName,
+			"ApiName": apiName,
 		})
 		if err != nil { panic(err) }
 	} else {
@@ -405,13 +405,14 @@ func (f BasicField) WriteUnmarshal(buf *bytes.Buffer) {
 	if supported {
 		err := BasicTemp.ExecuteTemplate(buf, "basic_unmarshal", map[string]any{
 			"Name": f.Name,
-			"Type": apiName,
+			"ApiName": apiName,
 		})
 		if err != nil { panic(err) }
 	} else {
 		// fmt.Println("Found Struct: ", f.Name)
 		err := BasicTemp.ExecuteTemplate(buf, "struct_unmarshal", map[string]any{
 			"Name": f.Name,
+			"Type": f.GetType(),
 		})
 		if err != nil { panic(err) }
 	}

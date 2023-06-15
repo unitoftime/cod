@@ -8,6 +8,8 @@ import (
 
 func TestSubPackage(t *testing.T) {
 	d := MyStruct{
+		// Vector: subpackage.Vec{1, 2},
+
 		Vector: []subpackage.Vec{
 			subpackage.Vec{1, 2},
 			subpackage.Vec{3, 4},
