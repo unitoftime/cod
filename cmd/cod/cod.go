@@ -87,7 +87,8 @@ func (v *Visitor) formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (Stru
 				return structData, false
 			}
 
-			// fmt.Println("TypeSpec: ", s.Name.Name)
+			fmt.Println("TypeSpec: ", s.Name.Name)
+			fmt.Printf("TypeSpec: %T\n", s.Type)
 			structData.Name = s.Name.Name
 			structData.Directive = directive
 			structData.DirectiveCSV = directiveCSV
@@ -108,21 +109,26 @@ func (v *Visitor) formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (Stru
 				continue
 			}
 
+			fmt.Println("Fields: ", sType.Fields.List)
+
 			unionTag := 1
 			for _, f := range sType.Fields.List {
-				for _, n := range f.Names {
-					// fmt.Println("Field: ", n.Name, f.Type, f.Tag)
-					// fmt.Printf("%T\n", f.Type)
+				if f.Names == nil {
+					fmt.Println("UnnamedField: ", f.Type, f.Tag)
+
+					// TODO: doesnt work for sel expressions
+					fIdent := f.Type.(*ast.Ident)
+					name := fIdent.Name
 
 					idxDepth := 0
-					field := v.generateField("t." + n.Name, idxDepth+1, f.Type)
+					field := v.generateField("t." + name, idxDepth+1, f.Type)
 					if f.Tag != nil {
 						field.SetTag(f.Tag.Value)
 					}
 
 					if directive == DirectiveUnionDef {
 						field = &UnionField{
-							Name: n.Name,
+							Name: name,
 							UnionTag: unionTag,
 							Field: field,
 							IndexDepth: idxDepth,
@@ -132,6 +138,30 @@ func (v *Visitor) formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (Stru
 					}
 
 					fields = append(fields, field)
+				} else {
+					for _, n := range f.Names {
+						fmt.Println("Field: ", n.Name, f.Type, f.Tag)
+						fmt.Printf("%T\n", f.Type)
+
+						idxDepth := 0
+						field := v.generateField("t." + n.Name, idxDepth+1, f.Type)
+						if f.Tag != nil {
+							field.SetTag(f.Tag.Value)
+						}
+
+						if directive == DirectiveUnionDef {
+							field = &UnionField{
+								Name: n.Name,
+								UnionTag: unionTag,
+								Field: field,
+								IndexDepth: idxDepth,
+							}
+
+							unionTag++
+						}
+
+						fields = append(fields, field)
+					}
 				}
 			}
 		}
@@ -142,9 +172,11 @@ func (v *Visitor) formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (Stru
 }
 
 func (v *Visitor) generateField(name string, idxDepth int, node ast.Node) Field {
+	fmt.Printf("generateField: %T\n", node)
+
 	switch expr := node.(type) {
 	case *ast.Ident:
-		// fmt.Println("Ident: ", expr.Name)
+		fmt.Println("Ident: ", expr.Name)
 		field := &BasicField{
 			Name: name,
 			Type: expr.Name,

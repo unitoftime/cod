@@ -29,8 +29,8 @@ type MyUnion cod.Union
 
 //cod:def
 type MyUnionDef struct {
-	Id Id
-	SpecialMap SpecialMap
+	Id
+	SpecialMap
 }
 
 //cod:struct
