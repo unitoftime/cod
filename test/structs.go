@@ -24,8 +24,14 @@ type Person struct {
 	MyUnion MyUnion
 }
 
-//cod:union Id, SpecialMap
+//cod:union MyUnionDef
 type MyUnion cod.Union
+
+//cod:def
+type MyUnionDef struct {
+	Id Id
+	SpecialMap SpecialMap
+}
 
 //cod:struct
 type SpecialMap map[string][]uint8

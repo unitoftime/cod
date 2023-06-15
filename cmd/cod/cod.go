@@ -108,14 +108,27 @@ func (v *Visitor) formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (Stru
 				continue
 			}
 
+			unionTag := 1
 			for _, f := range sType.Fields.List {
 				for _, n := range f.Names {
 					// fmt.Println("Field: ", n.Name, f.Type, f.Tag)
 					// fmt.Printf("%T\n", f.Type)
 
-					field := v.generateField("t." + n.Name, 0, f.Type)
+					idxDepth := 0
+					field := v.generateField("t." + n.Name, idxDepth+1, f.Type)
 					if f.Tag != nil {
 						field.SetTag(f.Tag.Value)
+					}
+
+					if directive == DirectiveUnionDef {
+						field = &UnionField{
+							Name: n.Name,
+							UnionTag: unionTag,
+							Field: field,
+							IndexDepth: idxDepth,
+						}
+
+						unionTag++
 					}
 
 					fields = append(fields, field)
@@ -233,6 +246,16 @@ func getDirective(t ast.GenDecl) (DirectiveType, []string) {
 
 			return DirectiveUnion, csv
 		}
+
+		after, foundUnionDef := strings.CutPrefix(c.Text, "//cod:def")
+		if foundUnionDef {
+			csv := strings.Split(after, ",")
+			for i := range csv {
+				csv[i] = strings.TrimSpace(csv[i])
+			}
+
+			return DirectiveUnionDef, csv
+		}
 	}
 	return DirectiveNone, nil
 }
@@ -309,46 +332,43 @@ type StructData struct {
 	Fields []Field
 }
 
-func (s *StructData) WriteStructMarshal(buf *bytes.Buffer) {
+func (v *Visitor) WriteStructMarshal(s *StructData, buf *bytes.Buffer) {
 	if s.Directive == DirectiveStruct {
 		for _, f := range s.Fields {
 			f.WriteMarshal(buf)
 		}
 	} else if s.Directive == DirectiveUnion {
-		innerBuf := new(bytes.Buffer)
-		for tag, name := range s.DirectiveCSV {
-			err := BasicTemp.ExecuteTemplate(innerBuf, "union_case_marshal", map[string]any{
-				"Type": name,
-				"Tag": tag+1,
-				// "InnerCode": string(innerInnerBuf.Bytes()),
-				// For now I'm just going to use the requirement that you can only add items to the union that implement the EncodeCod function pair. But you could fix this and let in primitives. It just gets hard and isnt as useful for me right now
-				// "InnerCode": "t.EncodeCod(buf)",
-			})
-			if err != nil { panic(err) }
-		}
+		// For unions we lookup the union def which must be the first csv element
+		unionDefName := s.DirectiveCSV[0]
+		unionDef, ok := v.structs[unionDefName]
+		if !ok { panic("Union def must be first element: //cod:union <UnionDefType>") }
 
+		innerBuf := new(bytes.Buffer)
+		fmt.Println("UDEF: ", unionDef.Fields)
+		for _, f := range unionDef.Fields {
+			f.WriteMarshal(innerBuf)
+		}
 		err := BasicTemp.ExecuteTemplate(buf, "union_marshal", map[string]any{
 			"InnerCode": string(innerBuf.Bytes()),
 		})
 		if err != nil { panic(err) }
-
 	}
 }
 
-func (s *StructData) WriteStructUnmarshal(buf *bytes.Buffer) {
+func (v *Visitor) WriteStructUnmarshal(s *StructData, buf *bytes.Buffer) {
 	if s.Directive == DirectiveStruct {
 		for _, f := range s.Fields {
 			f.WriteUnmarshal(buf)
 		}
 	} else if s.Directive == DirectiveUnion {
+		// For unions we lookup the union def which must be the first csv element
+		unionDefName := s.DirectiveCSV[0]
+		unionDef, ok := v.structs[unionDefName]
+		if !ok { panic("Union def must be first element: //cod:union <UnionDefType>") }
+
 		innerBuf := new(bytes.Buffer)
-		for tag, name := range s.DirectiveCSV {
-			err := BasicTemp.ExecuteTemplate(innerBuf, "union_case_unmarshal", map[string]any{
-				"Type": name,
-				"Tag": tag+1,
-				// "InnerCode": "t.EncodeCod(buf)",
-			})
-			if err != nil { panic(err) }
+		for _, f := range unionDef.Fields {
+			f.WriteUnmarshal(innerBuf)
 		}
 
 		err := BasicTemp.ExecuteTemplate(buf, "union_unmarshal", map[string]any{
@@ -652,6 +672,60 @@ func (f AliasField) WriteUnmarshal(buf *bytes.Buffer) {
 
 }
 
+type UnionField struct {
+	Name string
+	UnionTag int // This is the actual ID used to tag the data in the union
+	Tag string // This is the tag string after a specific field
+	Field Field
+	IndexDepth int
+}
+
+func (f *UnionField) SetName(name string) {
+	f.Name = name
+}
+func (f *UnionField) SetTag(tag string) {
+	f.Tag = tag
+}
+func (f *UnionField) GetType() string {
+	return f.Field.GetType()
+}
+
+//TODO: you could probably support basic types by just marshalling the f.Field code and putting it in the union case statement
+func (f UnionField) WriteMarshal(buf *bytes.Buffer) {
+	// innerBuf := new(bytes.Buffer)
+
+	// valName := fmt.Sprintf("value%d", f.IndexDepth)
+	// f.Field.SetName(valName)
+	// f.Field.WriteMarshal(innerBuf)
+
+	err := BasicTemp.ExecuteTemplate(buf, "union_case_marshal", map[string]any{
+		"Name": f.Name,
+		"Type": f.GetType(),
+		"Tag": f.UnionTag,
+	})
+	if err != nil { panic(err) }
+}
+
+
+func (f UnionField) WriteUnmarshal(buf *bytes.Buffer) {
+	// innerBuf := new(bytes.Buffer)
+	// valName := fmt.Sprintf("value%d", f.IndexDepth)
+	// f.Field.SetName(valName)
+	// f.Field.WriteUnmarshal(innerBuf)
+
+	// fmt.Println("ALIAS_GETTYPE: ", f.GetType(), f.Field.GetType())
+	err := BasicTemp.ExecuteTemplate(buf, "union_case_unmarshal", map[string]any{
+		"Name": f.Name,
+		"Type": f.GetType(),
+		"Tag": f.UnionTag,
+		// "ValName": valName,
+		// "ValType": f.Field.GetType(),
+		// "InnerCode": string(innerBuf.Bytes()),
+	})
+	if err != nil { panic(err) }
+
+}
+
 // type FieldType uint16
 // const (
 // 	FieldNone FieldType = iota
@@ -672,6 +746,7 @@ const (
 	DirectiveNone DirectiveType = iota
 	DirectiveStruct
 	DirectiveUnion
+	DirectiveUnionDef
 )
 
 
@@ -734,16 +809,18 @@ import (
 	marshBuf := bytes.NewBuffer([]byte{})
 	unmarshBuf := bytes.NewBuffer([]byte{})
 	for _, sd := range v.structs {
+		if sd.Directive == DirectiveUnionDef { continue }
+
 		marshBuf.Reset()
 		unmarshBuf.Reset()
 
 		fmt.Println("Struct: ", sd.Name)
 
 		// Write the marshal code
-		sd.WriteStructMarshal(marshBuf)
+		v.WriteStructMarshal(&sd, marshBuf)
 
 		// Write the unmarshal code
-		sd.WriteStructUnmarshal(unmarshBuf)
+		v.WriteStructUnmarshal(&sd, unmarshBuf)
 
 		// Write the encode func
 		err = marshal.Execute(buf, map[string]any{

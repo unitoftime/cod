@@ -170,7 +170,6 @@ for {{.Index}} := 0; {{.Index}} < int(length); {{.Index}}++ {
    default:
       panic("unknown type placed in union")
    }
-   return n, err
 `)
 
 	// Union cases

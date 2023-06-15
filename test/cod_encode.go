@@ -8,414 +8,6 @@ import (
 	"github.com/unitoftime/cod/test/subpackage"
 )
 
-func (t Person) EncodeCod(bs []byte) []byte {
-
-	bs = backend.WriteString(bs, t.Name)
-
-	bs = backend.WriteUint8(bs, t.Age)
-
-	bs = t.Id.EncodeCod(bs)
-	for i0 := range t.Array {
-
-		bs = backend.WriteVarUint16(bs, t.Array[i0])
-
-	}
-	{
-		bs = backend.WriteVarUint64(bs, uint64(len(t.Slice)))
-		for i0 := range t.Slice {
-
-			bs = backend.WriteVarUint32(bs, t.Slice[i0])
-
-		}
-	}
-	{
-		bs = backend.WriteVarUint64(bs, uint64(len(t.DoubleSlice)))
-		for i0 := range t.DoubleSlice {
-
-			{
-				bs = backend.WriteVarUint64(bs, uint64(len(t.DoubleSlice[i0])))
-				for i1 := range t.DoubleSlice[i0] {
-
-					bs = backend.WriteUint8(bs, t.DoubleSlice[i0][i1])
-
-				}
-			}
-		}
-	}
-	{
-		bs = backend.WriteVarUint64(bs, uint64(len(t.Map)))
-
-		for k0, v0 := range t.Map {
-
-			bs = backend.WriteString(bs, k0)
-
-			{
-				bs = backend.WriteVarUint64(bs, uint64(len(v0)))
-				for i1 := range v0 {
-
-					bs = backend.WriteVarUint64(bs, v0[i1])
-
-				}
-			}
-		}
-
-	}
-	{
-		bs = backend.WriteVarUint64(bs, uint64(len(t.MultiMap)))
-
-		for k0, v0 := range t.MultiMap {
-
-			bs = backend.WriteString(bs, k0)
-
-			{
-				bs = backend.WriteVarUint64(bs, uint64(len(v0)))
-
-				for k1, v1 := range v0 {
-
-					bs = backend.WriteVarUint32(bs, k1)
-
-					{
-						bs = backend.WriteVarUint64(bs, uint64(len(v1)))
-						for i2 := range v1 {
-
-							bs = backend.WriteUint8(bs, v1[i2])
-
-						}
-					}
-				}
-
-			}
-		}
-
-	}
-	bs = t.MyUnion.EncodeCod(bs)
-	return bs
-}
-
-func (t *Person) DecodeCod(bs []byte) (int, error) {
-	var err error
-	var n int
-	var nOff int
-
-	t.Name, nOff, err = backend.ReadString(bs[n:])
-	if err != nil {
-		return 0, err
-	}
-	n += nOff
-
-	t.Age, nOff, err = backend.ReadUint8(bs[n:])
-	if err != nil {
-		return 0, err
-	}
-	n += nOff
-
-	{
-		var decoded Id
-		nOff, err = decoded.DecodeCod(bs[n:])
-		if err != nil {
-			return 0, err
-		}
-		n += nOff
-		t.Id = decoded
-	}
-
-	for i0 := range t.Array {
-
-		t.Array[i0], nOff, err = backend.ReadVarUint16(bs[n:])
-		if err != nil {
-			return 0, err
-		}
-		n += nOff
-
-		if err != nil {
-			return 0, err
-		}
-	}
-	{
-		var length uint64
-		length, nOff, err = backend.ReadVarUint64(bs[n:])
-		if err != nil {
-			return 0, err
-		}
-		n += nOff
-
-		for i0 := 0; i0 < int(length); i0++ {
-			var value0 uint32
-
-			value0, nOff, err = backend.ReadVarUint32(bs[n:])
-			if err != nil {
-				return 0, err
-			}
-			n += nOff
-
-			if err != nil {
-				return 0, err
-			}
-
-			t.Slice = append(t.Slice, value0)
-		}
-	}
-	{
-		var length uint64
-		length, nOff, err = backend.ReadVarUint64(bs[n:])
-		if err != nil {
-			return 0, err
-		}
-		n += nOff
-
-		for i0 := 0; i0 < int(length); i0++ {
-			var value0 []uint8
-
-			{
-				var length uint64
-				length, nOff, err = backend.ReadVarUint64(bs[n:])
-				if err != nil {
-					return 0, err
-				}
-				n += nOff
-
-				for i1 := 0; i1 < int(length); i1++ {
-					var value1 uint8
-
-					value1, nOff, err = backend.ReadUint8(bs[n:])
-					if err != nil {
-						return 0, err
-					}
-					n += nOff
-
-					if err != nil {
-						return 0, err
-					}
-
-					value0 = append(value0, value1)
-				}
-			}
-			if err != nil {
-				return 0, err
-			}
-
-			t.DoubleSlice = append(t.DoubleSlice, value0)
-		}
-	}
-	{
-		var length uint64
-		length, nOff, err = backend.ReadVarUint64(bs[n:])
-		if err != nil {
-			return 0, err
-		}
-		n += nOff
-
-		if t.Map == nil {
-			t.Map = make(map[string][]uint64)
-		}
-
-		for i0 := 0; i0 < int(length); i0++ {
-			var key0 string
-			var val0 []uint64
-
-			key0, nOff, err = backend.ReadString(bs[n:])
-			if err != nil {
-				return 0, err
-			}
-			n += nOff
-
-			{
-				var length uint64
-				length, nOff, err = backend.ReadVarUint64(bs[n:])
-				if err != nil {
-					return 0, err
-				}
-				n += nOff
-
-				for i1 := 0; i1 < int(length); i1++ {
-					var value1 uint64
-
-					value1, nOff, err = backend.ReadVarUint64(bs[n:])
-					if err != nil {
-						return 0, err
-					}
-					n += nOff
-
-					if err != nil {
-						return 0, err
-					}
-
-					val0 = append(val0, value1)
-				}
-			}
-			if err != nil {
-				return 0, err
-			}
-
-			t.Map[key0] = val0
-		}
-	}
-	{
-		var length uint64
-		length, nOff, err = backend.ReadVarUint64(bs[n:])
-		if err != nil {
-			return 0, err
-		}
-		n += nOff
-
-		if t.MultiMap == nil {
-			t.MultiMap = make(map[string]map[uint32][]uint8)
-		}
-
-		for i0 := 0; i0 < int(length); i0++ {
-			var key0 string
-			var val0 map[uint32][]uint8
-
-			key0, nOff, err = backend.ReadString(bs[n:])
-			if err != nil {
-				return 0, err
-			}
-			n += nOff
-
-			{
-				var length uint64
-				length, nOff, err = backend.ReadVarUint64(bs[n:])
-				if err != nil {
-					return 0, err
-				}
-				n += nOff
-
-				if val0 == nil {
-					val0 = make(map[uint32][]uint8)
-				}
-
-				for i1 := 0; i1 < int(length); i1++ {
-					var key1 uint32
-					var val1 []uint8
-
-					key1, nOff, err = backend.ReadVarUint32(bs[n:])
-					if err != nil {
-						return 0, err
-					}
-					n += nOff
-
-					{
-						var length uint64
-						length, nOff, err = backend.ReadVarUint64(bs[n:])
-						if err != nil {
-							return 0, err
-						}
-						n += nOff
-
-						for i2 := 0; i2 < int(length); i2++ {
-							var value2 uint8
-
-							value2, nOff, err = backend.ReadUint8(bs[n:])
-							if err != nil {
-								return 0, err
-							}
-							n += nOff
-
-							if err != nil {
-								return 0, err
-							}
-
-							val1 = append(val1, value2)
-						}
-					}
-					if err != nil {
-						return 0, err
-					}
-
-					val0[key1] = val1
-				}
-			}
-			if err != nil {
-				return 0, err
-			}
-
-			t.MultiMap[key0] = val0
-		}
-	}
-	{
-		var decoded MyUnion
-		nOff, err = decoded.DecodeCod(bs[n:])
-		if err != nil {
-			return 0, err
-		}
-		n += nOff
-		t.MyUnion = decoded
-	}
-
-	return n, err
-}
-
-func (t MyUnion) EncodeCod(bs []byte) []byte {
-
-	rawVal := t.Get()
-	if rawVal == nil {
-		// Zero tag indicates nil
-		bs = backend.WriteUint8(bs, 0)
-		return bs
-	}
-
-	switch sv := rawVal.(type) {
-
-	case Id:
-		bs = backend.WriteUint8(bs, 1)
-		bs = sv.EncodeCod(bs)
-
-	case SpecialMap:
-		bs = backend.WriteUint8(bs, 2)
-		bs = sv.EncodeCod(bs)
-
-	default:
-		panic("unknown type placed in union")
-	}
-
-	return bs
-}
-
-func (t *MyUnion) DecodeCod(bs []byte) (int, error) {
-	var err error
-	var n int
-	var nOff int
-
-	var tagVal uint8
-
-	tagVal, nOff, err = backend.ReadUint8(bs[n:])
-	if err != nil {
-		return 0, err
-	}
-	n += nOff
-
-	switch tagVal {
-	case 0: // Zero tag indicates nil
-		return 0, nil
-
-	case 1:
-		var decoded Id
-		nOff, err = decoded.DecodeCod(bs[n:])
-		if err != nil {
-			return 0, err
-		}
-		n += nOff
-
-		t.Set(decoded)
-
-	case 2:
-		var decoded SpecialMap
-		nOff, err = decoded.DecodeCod(bs[n:])
-		if err != nil {
-			return 0, err
-		}
-		n += nOff
-
-		t.Set(decoded)
-
-	default:
-		panic("unknown type placed in union")
-	}
-	return n, err
-
-	return n, err
-}
-
 func (t SpecialMap) EncodeCod(bs []byte) []byte {
 
 	{
@@ -536,9 +128,9 @@ func (t MyStruct) EncodeCod(bs []byte) []byte {
 
 	{
 		bs = backend.WriteVarUint64(bs, uint64(len(t.Vector)))
-		for i0 := range t.Vector {
+		for i1 := range t.Vector {
 
-			bs = t.Vector[i0].EncodeCod(bs)
+			bs = t.Vector[i1].EncodeCod(bs)
 		}
 	}
 	return bs
@@ -557,8 +149,8 @@ func (t *MyStruct) DecodeCod(bs []byte) (int, error) {
 		}
 		n += nOff
 
-		for i0 := 0; i0 < int(length); i0++ {
-			var value0 subpackage.Vec
+		for i1 := 0; i1 < int(length); i1++ {
+			var value1 subpackage.Vec
 
 			{
 				var decoded subpackage.Vec
@@ -567,15 +159,422 @@ func (t *MyStruct) DecodeCod(bs []byte) (int, error) {
 					return 0, err
 				}
 				n += nOff
-				value0 = decoded
+				value1 = decoded
 			}
 
 			if err != nil {
 				return 0, err
 			}
 
-			t.Vector = append(t.Vector, value0)
+			t.Vector = append(t.Vector, value1)
 		}
+	}
+
+	return n, err
+}
+
+func (t Person) EncodeCod(bs []byte) []byte {
+
+	bs = backend.WriteString(bs, t.Name)
+
+	bs = backend.WriteUint8(bs, t.Age)
+
+	bs = t.Id.EncodeCod(bs)
+	for i1 := range t.Array {
+
+		bs = backend.WriteVarUint16(bs, t.Array[i1])
+
+	}
+	{
+		bs = backend.WriteVarUint64(bs, uint64(len(t.Slice)))
+		for i1 := range t.Slice {
+
+			bs = backend.WriteVarUint32(bs, t.Slice[i1])
+
+		}
+	}
+	{
+		bs = backend.WriteVarUint64(bs, uint64(len(t.DoubleSlice)))
+		for i1 := range t.DoubleSlice {
+
+			{
+				bs = backend.WriteVarUint64(bs, uint64(len(t.DoubleSlice[i1])))
+				for i2 := range t.DoubleSlice[i1] {
+
+					bs = backend.WriteUint8(bs, t.DoubleSlice[i1][i2])
+
+				}
+			}
+		}
+	}
+	{
+		bs = backend.WriteVarUint64(bs, uint64(len(t.Map)))
+
+		for k1, v1 := range t.Map {
+
+			bs = backend.WriteString(bs, k1)
+
+			{
+				bs = backend.WriteVarUint64(bs, uint64(len(v1)))
+				for i2 := range v1 {
+
+					bs = backend.WriteVarUint64(bs, v1[i2])
+
+				}
+			}
+		}
+
+	}
+	{
+		bs = backend.WriteVarUint64(bs, uint64(len(t.MultiMap)))
+
+		for k1, v1 := range t.MultiMap {
+
+			bs = backend.WriteString(bs, k1)
+
+			{
+				bs = backend.WriteVarUint64(bs, uint64(len(v1)))
+
+				for k2, v2 := range v1 {
+
+					bs = backend.WriteVarUint32(bs, k2)
+
+					{
+						bs = backend.WriteVarUint64(bs, uint64(len(v2)))
+						for i3 := range v2 {
+
+							bs = backend.WriteUint8(bs, v2[i3])
+
+						}
+					}
+				}
+
+			}
+		}
+
+	}
+	bs = t.MyUnion.EncodeCod(bs)
+	return bs
+}
+
+func (t *Person) DecodeCod(bs []byte) (int, error) {
+	var err error
+	var n int
+	var nOff int
+
+	t.Name, nOff, err = backend.ReadString(bs[n:])
+	if err != nil {
+		return 0, err
+	}
+	n += nOff
+
+	t.Age, nOff, err = backend.ReadUint8(bs[n:])
+	if err != nil {
+		return 0, err
+	}
+	n += nOff
+
+	{
+		var decoded Id
+		nOff, err = decoded.DecodeCod(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+		t.Id = decoded
+	}
+
+	for i1 := range t.Array {
+
+		t.Array[i1], nOff, err = backend.ReadVarUint16(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+
+		if err != nil {
+			return 0, err
+		}
+	}
+	{
+		var length uint64
+		length, nOff, err = backend.ReadVarUint64(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+
+		for i1 := 0; i1 < int(length); i1++ {
+			var value1 uint32
+
+			value1, nOff, err = backend.ReadVarUint32(bs[n:])
+			if err != nil {
+				return 0, err
+			}
+			n += nOff
+
+			if err != nil {
+				return 0, err
+			}
+
+			t.Slice = append(t.Slice, value1)
+		}
+	}
+	{
+		var length uint64
+		length, nOff, err = backend.ReadVarUint64(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+
+		for i1 := 0; i1 < int(length); i1++ {
+			var value1 []uint8
+
+			{
+				var length uint64
+				length, nOff, err = backend.ReadVarUint64(bs[n:])
+				if err != nil {
+					return 0, err
+				}
+				n += nOff
+
+				for i2 := 0; i2 < int(length); i2++ {
+					var value2 uint8
+
+					value2, nOff, err = backend.ReadUint8(bs[n:])
+					if err != nil {
+						return 0, err
+					}
+					n += nOff
+
+					if err != nil {
+						return 0, err
+					}
+
+					value1 = append(value1, value2)
+				}
+			}
+			if err != nil {
+				return 0, err
+			}
+
+			t.DoubleSlice = append(t.DoubleSlice, value1)
+		}
+	}
+	{
+		var length uint64
+		length, nOff, err = backend.ReadVarUint64(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+
+		if t.Map == nil {
+			t.Map = make(map[string][]uint64)
+		}
+
+		for i1 := 0; i1 < int(length); i1++ {
+			var key1 string
+			var val1 []uint64
+
+			key1, nOff, err = backend.ReadString(bs[n:])
+			if err != nil {
+				return 0, err
+			}
+			n += nOff
+
+			{
+				var length uint64
+				length, nOff, err = backend.ReadVarUint64(bs[n:])
+				if err != nil {
+					return 0, err
+				}
+				n += nOff
+
+				for i2 := 0; i2 < int(length); i2++ {
+					var value2 uint64
+
+					value2, nOff, err = backend.ReadVarUint64(bs[n:])
+					if err != nil {
+						return 0, err
+					}
+					n += nOff
+
+					if err != nil {
+						return 0, err
+					}
+
+					val1 = append(val1, value2)
+				}
+			}
+			if err != nil {
+				return 0, err
+			}
+
+			t.Map[key1] = val1
+		}
+	}
+	{
+		var length uint64
+		length, nOff, err = backend.ReadVarUint64(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+
+		if t.MultiMap == nil {
+			t.MultiMap = make(map[string]map[uint32][]uint8)
+		}
+
+		for i1 := 0; i1 < int(length); i1++ {
+			var key1 string
+			var val1 map[uint32][]uint8
+
+			key1, nOff, err = backend.ReadString(bs[n:])
+			if err != nil {
+				return 0, err
+			}
+			n += nOff
+
+			{
+				var length uint64
+				length, nOff, err = backend.ReadVarUint64(bs[n:])
+				if err != nil {
+					return 0, err
+				}
+				n += nOff
+
+				if val1 == nil {
+					val1 = make(map[uint32][]uint8)
+				}
+
+				for i2 := 0; i2 < int(length); i2++ {
+					var key2 uint32
+					var val2 []uint8
+
+					key2, nOff, err = backend.ReadVarUint32(bs[n:])
+					if err != nil {
+						return 0, err
+					}
+					n += nOff
+
+					{
+						var length uint64
+						length, nOff, err = backend.ReadVarUint64(bs[n:])
+						if err != nil {
+							return 0, err
+						}
+						n += nOff
+
+						for i3 := 0; i3 < int(length); i3++ {
+							var value3 uint8
+
+							value3, nOff, err = backend.ReadUint8(bs[n:])
+							if err != nil {
+								return 0, err
+							}
+							n += nOff
+
+							if err != nil {
+								return 0, err
+							}
+
+							val2 = append(val2, value3)
+						}
+					}
+					if err != nil {
+						return 0, err
+					}
+
+					val1[key2] = val2
+				}
+			}
+			if err != nil {
+				return 0, err
+			}
+
+			t.MultiMap[key1] = val1
+		}
+	}
+	{
+		var decoded MyUnion
+		nOff, err = decoded.DecodeCod(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+		t.MyUnion = decoded
+	}
+
+	return n, err
+}
+
+func (t MyUnion) EncodeCod(bs []byte) []byte {
+
+	rawVal := t.Get()
+	if rawVal == nil {
+		// Zero tag indicates nil
+		bs = backend.WriteUint8(bs, 0)
+		return bs
+	}
+
+	switch sv := rawVal.(type) {
+
+	case Id:
+		bs = backend.WriteUint8(bs, 1)
+		bs = sv.EncodeCod(bs)
+
+	case SpecialMap:
+		bs = backend.WriteUint8(bs, 2)
+		bs = sv.EncodeCod(bs)
+
+	default:
+		panic("unknown type placed in union")
+	}
+
+	return bs
+}
+
+func (t *MyUnion) DecodeCod(bs []byte) (int, error) {
+	var err error
+	var n int
+	var nOff int
+
+	var tagVal uint8
+
+	tagVal, nOff, err = backend.ReadUint8(bs[n:])
+	if err != nil {
+		return 0, err
+	}
+	n += nOff
+
+	switch tagVal {
+	case 0: // Zero tag indicates nil
+		return 0, nil
+
+	case 1:
+		var decoded Id
+		nOff, err = decoded.DecodeCod(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+
+		t.Set(decoded)
+
+	case 2:
+		var decoded SpecialMap
+		nOff, err = decoded.DecodeCod(bs[n:])
+		if err != nil {
+			return 0, err
+		}
+		n += nOff
+
+		t.Set(decoded)
+
+	default:
+		panic("unknown type placed in union")
 	}
 
 	return n, err
