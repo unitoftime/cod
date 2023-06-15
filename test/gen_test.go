@@ -6,6 +6,20 @@ import (
 	"github.com/unitoftime/cod/test/subpackage"
 )
 
+func TestBlankStruct(t *testing.T) {
+	d := BlankStruct{}
+
+	res := BlankStruct{}
+
+	bs := []byte{}
+	bs = d.EncodeCod(bs)
+	_, err := res.DecodeCod(bs)
+	if err != nil { panic(err) }
+
+	t.Log(d)
+	t.Log(res)
+}
+
 func TestSubPackage(t *testing.T) {
 	d := MyStruct{
 		// Vector: subpackage.Vec{1, 2},

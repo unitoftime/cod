@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"math"
 	"errors"
 	"encoding/binary"
 )
@@ -241,5 +242,28 @@ func ReadBool(bs []byte) (bool, int, error) {
 		ret = true
 	}
 
+	return ret, n, nil
+}
+
+// Floats
+func WriteFloat32(bs []byte, v float32) []byte {
+	return WriteUint32(bs, math.Float32bits(v))
+}
+func ReadFloat32(bs []byte) (float32, int, error) {
+	v, n, err := ReadUint32(bs)
+	if err != nil { return 0, 0, err }
+
+	ret := math.Float32frombits(v)
+	return ret, n, nil
+}
+
+func WriteFloat64(bs []byte, v float64) []byte {
+	return WriteUint64(bs, math.Float64bits(v))
+}
+func ReadFloat64(bs []byte) (float64, int, error) {
+	v, n, err := ReadUint64(bs)
+	if err != nil { return 0, 0, err }
+
+	ret := math.Float64frombits(v)
 	return ret, n, nil
 }

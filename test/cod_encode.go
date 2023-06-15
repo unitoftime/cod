@@ -3,10 +3,18 @@ package main
 import (
 	"github.com/unitoftime/cod/backend"
 
-	"github.com/unitoftime/cod"
-
 	"github.com/unitoftime/cod/test/subpackage"
+
+	"github.com/unitoftime/cod"
 )
+
+func (t BlankStruct) EncodeCod(bs []byte) []byte {
+	return bs
+}
+
+func (t *BlankStruct) DecodeCod(bs []byte) (n int, err error) {
+	return
+}
 
 func (t Person) EncodeCod(bs []byte) []byte {
 

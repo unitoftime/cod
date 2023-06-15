@@ -8,7 +8,8 @@ You will also need to add ~/go/bin/ (or windows equivalent is) to your path so y
 
 You can then add `//go:generate cod` to one of your go files in your package. This will run the cod binary every time you execute `go generate`. Finally you can tag structures that you want to generate code for as follows:
 1. Structs: `//cod:struct`
-2. Unions: `//cod:union <CSV List of Unionable Types>`
+2. Unions: `//cod:union <UnionDefName>`
+3. Union Definitions: `//cod:def`
 
 #### Notables
 1. Generated file is called `cod_encode.go` and will reside in the package you generated from
@@ -33,6 +34,9 @@ You can then add `//go:generate cod` to one of your go files in your package. Th
 3. Ability to selectively turn off variable length encoding with a tag: `cod:"fixed"` (or something)
 4. Ability to prevent a field from serializing (ie disable fields)
 5. Automatic bitpacking for structs that are just a long list of bools (or similar)
+6. Immediate panics when writing invalid types to a union (or come up with some type-safe way to prevent it)
+7. Would be nice to have a way to autocast a struct to another struct. That way you can easily serialize types that you dont own. This seems hard to get right though.
+8. Some tag to just say "encode this field as a uint64 or an int64"
 
 ### Syntax
 #### Custom Types
@@ -47,8 +51,14 @@ type Person struct {
     SomeListOfNumbers []int64
 }
 
-//cod:union Ball, Hat
+//cod:union ThingUnionDef
 type Thing cod.Union
+
+//cod:def
+type ThingUnionDef struct {
+   Ball
+   Hat
+}
 
 //cod:struct
 type Ball struct {

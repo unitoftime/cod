@@ -12,7 +12,7 @@ import (
 	// "go/printer"
 	"go/token"
 	"go/format"
-	"text/template"
+	// "text/template"
 	"strconv"
 	"path/filepath"
 
@@ -25,6 +25,9 @@ var supportedApis = map[string]string{
 	"uint8": "Uint8",
 	"int8": "Int8",
 
+	"uint": "Uint",
+	"int": "Int",
+
 	// As a default, we always use Variable length encoding APIs for anything > 2 bytes
 	"uint16": "VarUint16",
 	"uint32": "VarUint32",
@@ -33,6 +36,9 @@ var supportedApis = map[string]string{
 	"int16": "VarInt16",
 	"int32": "VarInt32",
 	"int64": "VarInt64",
+
+	"float32": "Float32",
+	"float64": "Float64",
 
 	"string": "String",
 	"bool": "Bool",
@@ -791,35 +797,6 @@ const (
 
 
 func (v *Visitor) Output(filename string) {
-	marshal, err := template.New("marshal").Parse(`
-func (t {{.Name}})EncodeCod(bs []byte) []byte {
-{{.MarshalCode}}
-return bs
-}
-`)
-	if err != nil { panic(err) }
-
-	unmarshal, err := template.New("unmarshal").Parse(`
-func (t *{{.Name}})DecodeCod(bs []byte) (int, error) {
-var err error
-var n int
-var nOff int
-
-{{.MarshalCode}}
-
-return n, err
-}
-`)
-	if err != nil { panic(err) }
-
-	importCod := false
-	for _, sd := range v.structs {
-		if sd.Directive == DirectiveUnion {
-			importCod = true
-			break
-		}
-	}
-
 	buf := bytes.NewBuffer([]byte{})
 	buf.WriteString("package " + v.pkg.Name)
 		buf.WriteString(`
@@ -827,14 +804,7 @@ import (
 	"github.com/unitoftime/cod/backend"
 `)
 
-	if importCod {
-		buf.WriteString(`
-	"github.com/unitoftime/cod"
-`)
-	}
-
 	for k := range v.usedImports {
-		if k == "cod" { continue }
 		fmt.Println("Used Import: ", k)
 		path, ok := v.imports[k]
 		fmt.Println("Used Import: ", k, path, ok)
@@ -856,21 +826,36 @@ import (
 
 		fmt.Println("Struct: ", sd.Name)
 
+		// If no fields, then its a blank struct
+		if len(sd.Fields) <= 0 {
+			// Write the encode func
+			err := BasicTemp.ExecuteTemplate(buf, "blank_marshal_func", map[string]any{
+				"Name": sd.Name,
+			})
+			if err != nil { panic(err) }
+
+			// Write the decode func
+			err = BasicTemp.ExecuteTemplate(buf, "blank_unmarshal_func", map[string]any{
+				"Name": sd.Name,
+			})
+			if err != nil { panic(err) }
+			continue
+		}
+
 		// Write the marshal code
 		v.WriteStructMarshal(&sd, marshBuf)
-
 		// Write the unmarshal code
 		v.WriteStructUnmarshal(&sd, unmarshBuf)
 
 		// Write the encode func
-		err = marshal.Execute(buf, map[string]any{
+		err := BasicTemp.ExecuteTemplate(buf, "marshal_func", map[string]any{
 			"Name": sd.Name,
 			"MarshalCode": string(marshBuf.Bytes()),
 		})
 		if err != nil { panic(err) }
 
 		// Write the decode func
-		err = unmarshal.Execute(buf, map[string]any{
+		err = BasicTemp.ExecuteTemplate(buf, "unmarshal_func", map[string]any{
 			"Name": sd.Name,
 			"MarshalCode": string(unmarshBuf.Bytes()),
 		})

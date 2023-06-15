@@ -18,6 +18,39 @@ func addStructTemplate(name string, dat string) {
 func init() {
 	BasicTemp = template.New("BasicTemp")
 
+	// Marshal/Unmarshal Functions
+	addTemplate("marshal_func", `
+func (t {{.Name}})EncodeCod(bs []byte) []byte {
+{{.MarshalCode}}
+return bs
+}
+`)
+
+	addTemplate("unmarshal_func", `
+func (t *{{.Name}})DecodeCod(bs []byte) (int, error) {
+var err error
+var n int
+var nOff int
+
+{{.MarshalCode}}
+
+return n, err
+}
+`)
+
+	// Blank Marshal/Unmarshal Functions
+	addTemplate("blank_marshal_func", `
+func (t {{.Name}})EncodeCod(bs []byte) []byte {
+return bs
+}
+`)
+
+	addTemplate("blank_unmarshal_func", `
+func (t *{{.Name}})DecodeCod(bs []byte) (n int, err error) {
+return
+}
+`)
+
 	// Standard Types
 	addTemplate("basic_marshal", `
 bs = backend.Write{{.ApiName}}(bs, {{.Name}})

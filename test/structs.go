@@ -7,6 +7,10 @@ import (
 //go:generate go run ../cmd/cod
 
 //cod:struct
+type BlankStruct struct {
+}
+
+//cod:struct
 type Person struct {
 	Name string
 	Age uint8
