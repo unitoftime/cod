@@ -198,13 +198,15 @@ func (v *Visitor) generateField(name string, idxDepth int, node ast.Node) Field 
 
 		return field
 
-	// case *ast.StarExpr:
-	// 	// fmt.Println("StarExpr: ", expr.Name)
-	// 	fmt.Printf("STAR %T\n", expr.X)
-	// 	field := generateField(name, 0, expr.X) // TODO: idxDepth???
-	// 	return PointerField{
-	// 		Field: field,
-	// 	}
+	case *ast.StarExpr:
+		// fmt.Println("StarExpr: ", expr.Name)
+		fmt.Printf("STAR %T\n", expr.X)
+		field := v.generateField(name, idxDepth+1, expr.X)
+		return &PointerField{
+			Name: name,
+			Field: field,
+			IndexDepth: idxDepth,
+		}
 
 	case *ast.ArrayType:
 		// fmt.Printf("ARRAY %T %T\n", expr.Len, expr.Elt)
@@ -537,6 +539,7 @@ func (f *ArrayField) SetName(name string) {
 }
 func (f *ArrayField) SetTag(tag string) {
 	f.Tag = tag
+	f.Field.SetTag(tag)
 }
 func (f *ArrayField) GetType() string {
 	return fmt.Sprintf("[%d]%s", f.Len, f.Field.GetType())
@@ -582,6 +585,7 @@ func (f *SliceField) SetName(name string) {
 }
 func (f *SliceField) SetTag(tag string) {
 	f.Tag = tag
+	f.Field.SetTag(tag)
 }
 func (f *SliceField) GetType() string {
 	return fmt.Sprintf("[]%s", f.Field.GetType())
@@ -634,6 +638,8 @@ func (f *MapField) SetName(name string) {
 }
 func (f *MapField) SetTag(tag string) {
 	f.Tag = tag
+	f.Key.SetTag(tag)
+	f.Val.SetTag(tag)
 }
 func (f *MapField) GetType() string {
 	return fmt.Sprintf("map[%s]%s", f.Key.GetType(), f.Val.GetType())
@@ -699,6 +705,7 @@ func (f *AliasField) SetName(name string) {
 }
 func (f *AliasField) SetTag(tag string) {
 	f.Tag = tag
+	f.Field.SetTag(tag)
 }
 func (f *AliasField) GetType() string {
 	return fmt.Sprintf("%s", f.Field.GetType())
@@ -754,6 +761,7 @@ func (f *UnionField) SetName(name string) {
 }
 func (f *UnionField) SetTag(tag string) {
 	f.Tag = tag
+	f.Field.SetTag(tag)
 }
 func (f *UnionField) GetType() string {
 	return f.Field.GetType()
@@ -790,6 +798,57 @@ func (f UnionField) WriteUnmarshal(buf *bytes.Buffer) {
 		// "ValName": valName,
 		// "ValType": f.Field.GetType(),
 		// "InnerCode": string(innerBuf.Bytes()),
+	})
+	if err != nil { panic(err) }
+}
+
+type PointerField struct {
+	Name string
+	Field Field
+	IndexDepth int
+}
+
+func (f *PointerField) SetName(name string) {
+	f.Name = name
+}
+func (f *PointerField) SetTag(tag string) {
+	f.Field.SetTag(tag)
+}
+func (f *PointerField) GetType() string {
+	return f.Field.GetType()
+}
+
+//TODO: you could probably support basic types by just marshalling the f.Field code and putting it in the union case statement
+func (f PointerField) WriteMarshal(buf *bytes.Buffer) {
+	innerBuf := new(bytes.Buffer)
+
+	valName := fmt.Sprintf("value%d", f.IndexDepth)
+	f.Field.SetName(valName)
+	f.Field.WriteMarshal(innerBuf)
+
+	err := BasicTemp.ExecuteTemplate(buf, "pointer_marshal", map[string]any{
+		"Name": f.Name,
+		"Type": f.GetType(),
+		"ValName": valName,
+		"InnerCode": innerBuf.String(),
+	})
+	if err != nil { panic(err) }
+}
+
+
+func (f PointerField) WriteUnmarshal(buf *bytes.Buffer) {
+	innerBuf := new(bytes.Buffer)
+	valName := fmt.Sprintf("value%d", f.IndexDepth)
+	f.Field.SetName(valName)
+	f.Field.WriteUnmarshal(innerBuf)
+
+	// fmt.Println("ALIAS_GETTYPE: ", f.GetType(), f.Field.GetType())
+	err := BasicTemp.ExecuteTemplate(buf, "pointer_unmarshal", map[string]any{
+		"Name": f.Name,
+		"Type": f.GetType(),
+		"ValName": valName,
+		"ValType": f.Field.GetType(),
+		"InnerCode": innerBuf.String(),
 	})
 	if err != nil { panic(err) }
 

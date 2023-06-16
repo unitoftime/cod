@@ -222,7 +222,10 @@ func ReadString(bs []byte) (string, int, error) {
 	dat, n, err := readByteSlice(bs)
 	if err != nil { return "", 0, err }
 
-	return string(dat), n, nil
+	// TODO: Double check how string casting works, does it do a copy?
+	datCopy := make([]byte, len(dat))
+	copy(datCopy, dat)
+	return string(datCopy), n, nil
 }
 
 

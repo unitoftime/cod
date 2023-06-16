@@ -272,6 +272,36 @@ func (t *{{.Name}}) Set(v any) {
 }
 `)
 
+	// Pointer
+	addTemplate("pointer_marshal", `
+{
+   if {{.Name}} == nil {
+      // Zero tag indicates nil
+      bs = backend.WriteUint8(bs, 0)
+   } else {
+      bs = backend.WriteUint8(bs, 1)
+      {{.ValName}} := *{{.Name}}
+      {{.InnerCode}}
+   }
+}`)
+
+	addTemplate("pointer_unmarshal", `
+{
+   var tagVal uint8
+   tagVal, nOff, err = backend.ReadUint8(bs[n:])
+   if err != nil { return 0, err }
+   n += nOff
+
+   if tagVal == 0 {
+      // Zero tag indicates nil
+      {{.Name}} = nil
+   } else {
+      var {{.ValName}} {{.ValType}}
+      {{.InnerCode}}
+      {{.Name}} = &{{.ValName}}
+   }
+}`)
+
 
 // 	// Struct
 // 	addTemplate("reg_struct_marshal", `

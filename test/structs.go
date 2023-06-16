@@ -14,6 +14,11 @@ type BlockedStruct struct {
 }
 
 //cod:struct
+type BlockedStruct2 struct {
+	Basic []blocked.Basic `cod.cast:"uint64"`
+}
+
+//cod:struct
 type BlankStruct struct {
 }
 
@@ -34,6 +39,8 @@ type Person struct {
 	// MyUnion cod.Union //`union:"Id, Thing1, Thing2"`
 
 	MyUnion MyUnion
+
+	Pointer *BlockedStruct
 }
 
 //cod:union MyUnionDef

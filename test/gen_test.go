@@ -23,6 +23,25 @@ func TestBlockedStruct(t *testing.T) {
 	t.Log(res)
 }
 
+func TestBlockedStruct2(t *testing.T) {
+	d := BlockedStruct2{
+		Basic: []blocked.Basic{
+			blocked.Basic(1),
+			blocked.Basic(2),
+		},
+	}
+
+	res := BlockedStruct2{}
+
+	bs := []byte{}
+	bs = d.EncodeCod(bs)
+	_, err := res.DecodeCod(bs)
+	if err != nil { panic(err) }
+
+	t.Log(d)
+	t.Log(res)
+}
+
 
 func TestBlankStruct(t *testing.T) {
 	d := BlankStruct{}
@@ -84,6 +103,10 @@ func TestPerson(t *testing.T) {
 		},
 
 		MyUnion: NewMyUnion(Id{8}),
+
+		Pointer: &BlockedStruct{
+			Basic: blocked.Basic(1),
+		},
 	}
 
 	res := Person{
