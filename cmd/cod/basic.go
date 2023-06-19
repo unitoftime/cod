@@ -34,6 +34,7 @@ var nOff int
 
 {{.MarshalCode}}
 
+// println("{{.Name}}:", n)
 return n, err
 }
 `)

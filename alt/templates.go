@@ -1,4 +1,4 @@
-package main
+package alt
 
 import (
 	// "bytes"
@@ -11,9 +11,6 @@ func addTemplate(name string, dat string) {
 	template.Must(BasicTemp.New(name).Parse(dat))
 }
 
-func addStructTemplate(name string, dat string) {
-	template.Must(BasicTemp.New(name).Parse(dat))
-}
 
 func init() {
 	BasicTemp = template.New("BasicTemp")
@@ -56,9 +53,6 @@ return
 bs = backend.Write{{.ApiName}}(bs, {{.Cast}}({{.Name}}))
 `)
 
-// {{.Name}}, nOff, err = backend.Read{{.ApiName}}(bs[n:])
-// if err != nil { return 0, err }
-// n += nOff
 	addTemplate("basic_unmarshal", `
 {
 var decoded {{.Type}}
@@ -87,17 +81,21 @@ n += nOff
 	// TODO: could also unroll the loop here?
 	// Arrays
 	addTemplate("array_marshal", `
+{
 for {{.Index}} := range {{.Name}} {
    {{.InnerCode}}
+}
 }`)
 
 	addTemplate("array_unmarshal", `
+{
 for {{.Index}} := range {{.Name}} {
    {{.InnerCode}}
 
    if err != nil {
       return 0, err
    }
+}
 }`)
 
 	// Slice

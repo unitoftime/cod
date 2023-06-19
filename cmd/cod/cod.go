@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"os"
 	"strings"
+	"sort"
 	// "math"
 	"io/fs"
 	"go/ast"
@@ -886,7 +887,13 @@ import (
 	"github.com/unitoftime/cod/backend"
 `)
 
+	toSort := make([]string, 0)
 	for k := range v.usedImports {
+		toSort = append(toSort, k)
+	}
+	sort.Strings(toSort)
+
+	for _, k := range toSort {
 		fmt.Println("Used Import: ", k)
 		path, ok := v.imports[k]
 		fmt.Println("Used Import: ", k, path, ok)
@@ -898,9 +905,17 @@ import (
 		buf.WriteString(`
 )`)
 
+	toSort = toSort[:0]
+	for k := range v.structs {
+		toSort = append(toSort, k)
+	}
+	sort.Strings(toSort)
+
 	marshBuf := bytes.NewBuffer([]byte{})
 	unmarshBuf := bytes.NewBuffer([]byte{})
-	for _, sd := range v.structs {
+	for _, k := range toSort {
+		sd, _ := v.structs[k]
+	// for _, sd := range v.structs {
 		if sd.Directive == DirectiveUnionDef { continue }
 
 		marshBuf.Reset()
@@ -944,7 +959,9 @@ import (
 		if err != nil { panic(err) }
 	}
 
-	for _, sd := range v.structs {
+	for _, k := range toSort {
+		sd, _ := v.structs[k]
+	// for _, sd := range v.structs {
 		if sd.Directive != DirectiveUnion { continue }
 
 		// Create constructors, getters, setters per union type

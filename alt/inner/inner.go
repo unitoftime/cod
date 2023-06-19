@@ -4,6 +4,8 @@ import (
 	"github.com/unitoftime/flow/phy2"
 )
 
+type AAA uint8
+
 type Type1 uint8
 
 type Type2 Type1
@@ -25,6 +27,7 @@ type Type3 struct {
 	Map map[string]uint16
 
 	Embedded
+	Pointer *uint8
 }
 
 type Embedded struct {
