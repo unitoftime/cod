@@ -210,7 +210,7 @@ for {{.Index}} := 0; {{.Index}} < int(length); {{.Index}}++ {
 
    {{.InnerCode}}
    default:
-      panic("unknown type placed in union")
+      return 0, backend.ErrUnknownUnionType
    }
 `)
 

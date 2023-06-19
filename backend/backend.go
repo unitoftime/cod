@@ -7,6 +7,7 @@ import (
 )
 
 var ErrTruncatedData = errors.New("cod: unmarshal encountered truncated data")
+var ErrUnknownUnionType = errors.New("cod: unknown type in union")
 
 const (
 	sizeUint8 = 1
