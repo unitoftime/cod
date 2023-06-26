@@ -45,6 +45,20 @@ var supportedApis = map[string]string{
 	"bool": "Bool",
 }
 
+var enableDebug = false
+
+func debugPrintf(format string, a ...any) {
+	if enableDebug {
+		fmt.Printf(format, a...)
+	}
+}
+
+func debugPrintln(a ...any) {
+	if enableDebug {
+		fmt.Println(a...)
+	}
+}
+
 
 func main() {
 	generatePackage(".")
@@ -58,7 +72,7 @@ func generatePackage(dir string) {
 	}
 
 	for _, pkg := range packages {
-		fmt.Println("Parsing", pkg.Name)
+		fmt.Println("Parsing Package:", pkg.Name)
 		bv := &Visitor{
 			// buf: &bytes.Buffer{},
 			pkg: pkg,
@@ -94,13 +108,13 @@ func (v *Visitor) formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (Stru
 				return structData, false
 			}
 
-			fmt.Println("TypeSpec: ", s.Name.Name)
-			fmt.Printf("TypeSpec: %T\n", s.Type)
+			debugPrintln("TypeSpec: ", s.Name.Name)
+			debugPrintf("TypeSpec: %T\n", s.Type)
 			structData.Name = s.Name.Name
 			structData.Directive = directive
 			structData.DirectiveCSV = directiveCSV
 
-			// fmt.Printf("Struct Type: %T\n", s.Type)
+			// debugPrintf("Struct Type: %T\n", s.Type)
 			sType, ok := s.Type.(*ast.StructType)
 			if !ok {
 				// Not a struct, then its an alias. So handle that if we can
@@ -116,12 +130,12 @@ func (v *Visitor) formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (Stru
 				continue
 			}
 
-			fmt.Println("Fields: ", sType.Fields.List)
+			debugPrintln("Fields: ", sType.Fields.List)
 
 			unionTag := 1
 			for _, f := range sType.Fields.List {
 				if f.Names == nil {
-					fmt.Println("UnnamedField: ", f.Type, f.Tag)
+					debugPrintln("UnnamedField: ", f.Type, f.Tag)
 
 					// TODO: probably come up with a better way of getting the name
 					name := ""
@@ -155,8 +169,8 @@ func (v *Visitor) formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (Stru
 					fields = append(fields, field)
 				} else {
 					for _, n := range f.Names {
-						fmt.Println("Field: ", n.Name, f.Type, f.Tag)
-						fmt.Printf("%T\n", f.Type)
+						debugPrintln("Field: ", n.Name, f.Type, f.Tag)
+						debugPrintf("%T\n", f.Type)
 
 						idxDepth := 0
 						field := v.generateField("t." + n.Name, idxDepth+1, f.Type)
@@ -187,11 +201,11 @@ func (v *Visitor) formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (Stru
 }
 
 func (v *Visitor) generateField(name string, idxDepth int, node ast.Node) Field {
-	fmt.Printf("generateField: %T\n", node)
+	debugPrintf("generateField: %T\n", node)
 
 	switch expr := node.(type) {
 	case *ast.Ident:
-		fmt.Println("Ident: ", expr.Name)
+		debugPrintln("Ident: ", expr.Name)
 		field := &BasicField{
 			Name: name,
 			Type: expr.Name,
@@ -200,8 +214,8 @@ func (v *Visitor) generateField(name string, idxDepth int, node ast.Node) Field 
 		return field
 
 	case *ast.StarExpr:
-		// fmt.Println("StarExpr: ", expr.Name)
-		fmt.Printf("STAR %T\n", expr.X)
+		// debugPrintln("StarExpr: ", expr.Name)
+		debugPrintf("STAR %T\n", expr.X)
 		field := v.generateField(name, idxDepth+1, expr.X)
 		return &PointerField{
 			Name: name,
@@ -210,7 +224,7 @@ func (v *Visitor) generateField(name string, idxDepth int, node ast.Node) Field 
 		}
 
 	case *ast.ArrayType:
-		// fmt.Printf("ARRAY %T %T\n", expr.Len, expr.Elt)
+		// debugPrintf("ARRAY %T %T\n", expr.Len, expr.Elt)
 
 		if expr.Len == nil {
 			idxString := fmt.Sprintf("[i%d]", idxDepth)
@@ -237,7 +251,7 @@ func (v *Visitor) generateField(name string, idxDepth int, node ast.Node) Field 
 		}
 
 	case *ast.MapType:
-		// fmt.Printf("MAP %T %T\n", expr.Key, expr.Value)
+		// debugPrintf("MAP %T %T\n", expr.Key, expr.Value)
 		keyString := fmt.Sprintf("[k%d]", idxDepth)
 		valString := fmt.Sprintf("[v%d]", idxDepth)
 		key := v.generateField(name + keyString, idxDepth + 1, expr.Key)
@@ -250,9 +264,9 @@ func (v *Visitor) generateField(name string, idxDepth int, node ast.Node) Field 
 		}
 	case *ast.SelectorExpr:
 		// Note: anything that is a selector expression (ie phy.Position) is guaranteed to be a struct. so it must implement the required struct interface
-		fmt.Printf("SELECTOREXPR: %T %T\n", expr.X, expr.Sel)
+		debugPrintf("SELECTOREXPR: %T %T\n", expr.X, expr.Sel)
 		x := expr.X.(*ast.Ident)
-		fmt.Println("SELECTOREXPR:", x.Name, expr.Sel.Name)
+		debugPrintln("SELECTOREXPR:", x.Name, expr.Sel.Name)
 		field := &BasicField{
 			Name: name,
 			// Type: "UNKNOWN_SELECTOR_EXPR", // This will force it to resolve to the struct marshaller
@@ -323,7 +337,7 @@ type Visitor struct {
 func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 	if node == nil { return nil }
 
-	// fmt.Printf("Node: %T\n", node)
+	// debugPrintf("Node: %T\n", node)
 
 	// If we are a package, then just keep searching
 	_, ok := node.(*ast.Package)
@@ -336,7 +350,7 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 		v.cmap = ast.NewCommentMap(v.fset, file, file.Comments)
 
 		for _, importSpec := range file.Imports {
-			fmt.Println("IMPORT SPEC: ", importSpec)
+			debugPrintln("IMPORT SPEC: ", importSpec)
 			path := importSpec.Path.Value
 
 			name := strings.TrimSuffix(filepath.Base(path), `"`)
@@ -346,7 +360,7 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 			if nameIdent != nil {
 				name = nameIdent.Name
 			}
-			fmt.Println("IMPORT: ", name, path)
+			debugPrintln("IMPORT: ", name, path)
 			v.imports[name] = path
 		}
 		return v
@@ -393,7 +407,7 @@ func (v *Visitor) WriteStructMarshal(s *StructData, buf *bytes.Buffer) {
 		if !ok { panic("Union def must be first element: //cod:union <UnionDefType>") }
 
 		innerBuf := new(bytes.Buffer)
-		fmt.Println("UDEF: ", unionDef.Fields)
+		debugPrintln("UDEF: ", unionDef.Fields)
 		for _, f := range unionDef.Fields {
 			f.WriteMarshal(innerBuf)
 		}
@@ -454,7 +468,7 @@ func (f *BasicField) GetType() string {
 
 func (f BasicField) WriteMarshal(buf *bytes.Buffer) {
 	cast := tagSearchCast(f.Tag)
-	fmt.Println("Cast: ", cast)
+	debugPrintln("Cast: ", cast)
 
 	apiType := f.Type
 	if cast != "" {
@@ -470,7 +484,7 @@ func (f BasicField) WriteMarshal(buf *bytes.Buffer) {
 		})
 		if err != nil { panic(err) }
 	} else {
-		// fmt.Println("Found Struct: ", f.Name)
+		// debugPrintln("Found Struct: ", f.Name)
 		err := BasicTemp.ExecuteTemplate(buf, "struct_marshal", map[string]any{
 			"Name": f.Name,
 		})
@@ -480,7 +494,7 @@ func (f BasicField) WriteMarshal(buf *bytes.Buffer) {
 
 func (f BasicField) WriteUnmarshal(buf *bytes.Buffer) {
 	cast := tagSearchCast(f.Tag)
-	fmt.Println("Cast: ", cast)
+	debugPrintln("Cast: ", cast)
 
 	apiType := f.Type
 	if cast != "" {
@@ -501,7 +515,7 @@ func (f BasicField) WriteUnmarshal(buf *bytes.Buffer) {
 		})
 		if err != nil { panic(err) }
 	} else {
-		// fmt.Println("Found Struct: ", f.Name)
+		// debugPrintln("Found Struct: ", f.Name)
 		err := BasicTemp.ExecuteTemplate(buf, "struct_unmarshal", map[string]any{
 			"Name": f.Name,
 			"Type": f.GetType(),
@@ -518,7 +532,7 @@ func (f BasicField) WriteUnmarshal(buf *bytes.Buffer) {
 	// 	"Name": f.Name,
 	// })
 	// if err != nil {
-	// 	fmt.Println("Couldn't find type, assuming its a struct: ", f.Name)
+	// 	debugPrintln("Couldn't find type, assuming its a struct: ", f.Name)
 	// 	templateName := fmt.Sprintf("%s_%s_unmarshal", pointerStar, "struct")
 	// 	err := BasicTemp.ExecuteTemplate(buf, templateName, map[string]any{
 	// 		"Name": f.Name,
@@ -614,7 +628,7 @@ func (f SliceField) WriteUnmarshal(buf *bytes.Buffer) {
 	f.Field.SetName(varName)
 	f.Field.WriteUnmarshal(innerBuf)
 
-	// fmt.Println("GETTYPE: ", f.Field.GetType())
+	// debugPrintln("GETTYPE: ", f.Field.GetType())
 	err := BasicTemp.ExecuteTemplate(buf, "slice_unmarshal", map[string]any{
 		"Name": f.Name,
 		"VarName": varName,
@@ -677,7 +691,7 @@ func (f MapField) WriteUnmarshal(buf *bytes.Buffer) {
 	f.Val.SetName(valVarName)
 	f.Val.WriteUnmarshal(innerBuf)
 
-	// fmt.Println("GETTYPE: ", f.GetType(), f.Key.GetType(), f.Val.GetType())
+	// debugPrintln("GETTYPE: ", f.GetType(), f.Key.GetType(), f.Val.GetType())
 	err := BasicTemp.ExecuteTemplate(buf, "map_unmarshal", map[string]any{
 		"Name": f.Name,
 		"Type": f.GetType(),
@@ -736,7 +750,7 @@ func (f AliasField) WriteUnmarshal(buf *bytes.Buffer) {
 	f.Field.SetName(valName)
 	f.Field.WriteUnmarshal(innerBuf)
 
-	// fmt.Println("ALIAS_GETTYPE: ", f.GetType(), f.Field.GetType())
+	// debugPrintln("ALIAS_GETTYPE: ", f.GetType(), f.Field.GetType())
 	err := BasicTemp.ExecuteTemplate(buf, "alias_unmarshal", map[string]any{
 		"Name": f.Name,
 		"AliasType": f.AliasType,
@@ -791,7 +805,7 @@ func (f UnionField) WriteUnmarshal(buf *bytes.Buffer) {
 	// f.Field.SetName(valName)
 	// f.Field.WriteUnmarshal(innerBuf)
 
-	// fmt.Println("ALIAS_GETTYPE: ", f.GetType(), f.Field.GetType())
+	// debugPrintln("ALIAS_GETTYPE: ", f.GetType(), f.Field.GetType())
 	err := BasicTemp.ExecuteTemplate(buf, "union_case_unmarshal", map[string]any{
 		"Name": f.Name,
 		"Type": f.GetType(),
@@ -843,7 +857,7 @@ func (f PointerField) WriteUnmarshal(buf *bytes.Buffer) {
 	f.Field.SetName(valName)
 	f.Field.WriteUnmarshal(innerBuf)
 
-	// fmt.Println("ALIAS_GETTYPE: ", f.GetType(), f.Field.GetType())
+	// debugPrintln("ALIAS_GETTYPE: ", f.GetType(), f.Field.GetType())
 	err := BasicTemp.ExecuteTemplate(buf, "pointer_unmarshal", map[string]any{
 		"Name": f.Name,
 		"Type": f.GetType(),
@@ -894,9 +908,9 @@ import (
 	sort.Strings(toSort)
 
 	for _, k := range toSort {
-		fmt.Println("Used Import: ", k)
+		debugPrintln("Used Import: ", k)
 		path, ok := v.imports[k]
-		fmt.Println("Used Import: ", k, path, ok)
+		debugPrintln("Used Import: ", k, path, ok)
 		if !ok {
 			panic("couldnt find import!")
 		}
@@ -921,7 +935,7 @@ import (
 		marshBuf.Reset()
 		unmarshBuf.Reset()
 
-		fmt.Println("Struct: ", sd.Name)
+		debugPrintln("Struct: ", sd.Name)
 
 		// If no fields, then its a blank struct
 		if len(sd.Fields) <= 0 {
@@ -1002,18 +1016,18 @@ func tagSearchCast(tag string) string {
 
 	split := strings.Split(tag, " ")
 
-	// fmt.Println("AAA")
-	// fmt.Println(split)
+	// debugPrintln("AAA")
+	// debugPrintln(split)
 	for _, s := range split {
 		s = strings.TrimSpace(s)
-		// fmt.Println(s)
+		// debugPrintln(s)
 
 		valQuoted, ok := strings.CutPrefix(s, "`cod.cast:")
 		if !ok { continue }
-		// fmt.Println(valQuoted)
+		// debugPrintln(valQuoted)
 
 		val := strings.Trim(valQuoted, "\"`")
-		// fmt.Println(val)
+		// debugPrintln(val)
 		return val
 	}
 	return ""
