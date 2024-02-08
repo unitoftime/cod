@@ -180,9 +180,54 @@ for {{.Index}} := 0; {{.Index}} < int(length); {{.Index}}++ {
    *{{.Name}} = {{.AliasType}}({{.ValName}})
 }`)
 
+	// --------------------------------------------------------------------------------
 	// Union
+	// --------------------------------------------------------------------------------
+	// TODO: Should I do uvarints for tags? 255 is an absolutely massive union...
+	addTemplate("union_get_tag_func", `
+func (t {{.Name}})Tag() uint8 {
+   rawVal := t.Get()
+   if rawVal == nil {
+      // Zero tag indicates nil
+      return 0
+   }
+
+   switch rawVal.(type) {
+{{.InnerCode}}
+   default:
+      panic("unknown type placed in union")
+   }
+}
+`)
+
+	// Union cases
+	addTemplate("union_case_get_tag", `
+   case {{.Type}}:
+      return {{.Tag}}
+`)
+
+	addTemplate("union_get_size_func", `
+func (t {{.Name}})Size() int {
+   return {{.Size}}
+}
+`)
+
 	// TODO: Should I do uvarints for tags? 255 is an absolutely massive union...
 	addTemplate("union_marshal", `
+   tag := t.Tag()
+   bs = backend.WriteUint8(bs, tag)
+   if tag == 0 {
+      // Zero tag indicates nil, so write nothing else
+      return bs
+   }
+
+   rawVal := t.Get()
+   bs = rawVal.EncodeCod(bs)
+
+   return bs
+`)
+// Old marshal code. just keeping it around in case
+/*
    rawVal := t.Get()
    if rawVal == nil {
       // Zero tag indicates nil
@@ -195,7 +240,10 @@ for {{.Index}} := 0; {{.Index}} < int(length); {{.Index}}++ {
    default:
       panic("unknown type placed in union")
    }
-`)
+
+   return bs
+*/
+
 
 	addTemplate("union_unmarshal", `
    var tagVal uint8
@@ -233,7 +281,7 @@ for {{.Index}} := 0; {{.Index}} < int(length); {{.Index}}++ {
 
 	// Union getters and setters
 	addTemplate("union_getter", `
-func (t {{.Name}}) Get() any {
+func (t {{.Name}}) Get() cod.EncoderDecoder {
    codUnion := cod.Union(t)
    rawVal := codUnion.GetRawValue()
    return rawVal
@@ -247,7 +295,7 @@ func (t {{.Name}}) Get() any {
 `)
 
 	addTemplate("union_constructor", `
-func New{{.Name}}(v any) {{.Name}} {
+func New{{.Name}}(v cod.EncoderDecoder) {{.Name}} {
    var ret {{.Name}}
    ret.Set(v)
    return ret
@@ -256,7 +304,7 @@ func New{{.Name}}(v any) {{.Name}} {
 
 // TODO: You could theoretically check and panic if the user passes in an incorrect value
 	addTemplate("union_setter", `
-func (t *{{.Name}}) Set(v any) {
+func (t *{{.Name}}) Set(v cod.EncoderDecoder) {
    codUnion := cod.Union(*t)
    codUnion.PutRawValue(v)
    *t = {{.Name}}(codUnion)

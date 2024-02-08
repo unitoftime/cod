@@ -1,23 +1,25 @@
 package main
 
 import (
-	"fmt"
 	"bytes"
+	"fmt"
+	"io"
 	"os"
-	"strings"
 	"sort"
+	"strings"
+
 	// "math"
-	"io/fs"
 	"go/ast"
 	"go/parser"
+	"io/fs"
+
 	// "go/printer"
-	"go/token"
 	"go/format"
+	"go/token"
+
 	// "text/template"
-	"strconv"
 	"path/filepath"
-
-
+	"strconv"
 	// _ "embed"
 )
 
@@ -393,6 +395,45 @@ type StructData struct {
 	Directive DirectiveType
 	DirectiveCSV []string
 	Fields []Field
+}
+
+func (v *Visitor) WriteUnionCodeToBuffer(s *StructData, buf io.Writer) {
+	if s.Directive != DirectiveUnion { return } // Exit if not union
+
+	// For unions we lookup the union def which must be the first csv element
+	unionDefName := s.DirectiveCSV[0]
+	unionDef, ok := v.structs[unionDefName]
+	if !ok { panic("Union def must be first element: //cod:union <UnionDefType>") }
+
+	debugPrintln("UDEF: ", unionDef.Fields)
+	// GetTag()
+	{
+		innerBuf := new(bytes.Buffer)
+		for _, fInterface := range unionDef.Fields {
+			f := fInterface.(*UnionField)
+			err := BasicTemp.ExecuteTemplate(innerBuf, "union_case_get_tag", map[string]any{
+				"Name": f.Name,
+				"Type": f.GetType(),
+				"Tag": f.UnionTag,
+			})
+			if err != nil { panic(err) }
+		}
+
+		err := BasicTemp.ExecuteTemplate(buf, "union_get_tag_func", map[string]any{
+			"Name": s.Name,
+			"InnerCode": string(innerBuf.Bytes()),
+		})
+		if err != nil { panic(err) }
+	}
+
+	// GetSize()
+	{
+		err := BasicTemp.ExecuteTemplate(buf, "union_get_size_func", map[string]any{
+			"Name": s.Name,
+			"Size": len(unionDef.Fields) + 1, // Note: + 1 b/c 0 is the nil case
+		})
+		if err != nil { panic(err) }
+	}
 }
 
 func (v *Visitor) WriteStructMarshal(s *StructData, buf *bytes.Buffer) {
@@ -784,12 +825,6 @@ func (f *UnionField) GetType() string {
 
 //TODO: you could probably support basic types by just marshalling the f.Field code and putting it in the union case statement
 func (f UnionField) WriteMarshal(buf *bytes.Buffer) {
-	// innerBuf := new(bytes.Buffer)
-
-	// valName := fmt.Sprintf("value%d", f.IndexDepth)
-	// f.Field.SetName(valName)
-	// f.Field.WriteMarshal(innerBuf)
-
 	err := BasicTemp.ExecuteTemplate(buf, "union_case_marshal", map[string]any{
 		"Name": f.Name,
 		"Type": f.GetType(),
@@ -800,19 +835,11 @@ func (f UnionField) WriteMarshal(buf *bytes.Buffer) {
 
 
 func (f UnionField) WriteUnmarshal(buf *bytes.Buffer) {
-	// innerBuf := new(bytes.Buffer)
-	// valName := fmt.Sprintf("value%d", f.IndexDepth)
-	// f.Field.SetName(valName)
-	// f.Field.WriteUnmarshal(innerBuf)
-
 	// debugPrintln("ALIAS_GETTYPE: ", f.GetType(), f.Field.GetType())
 	err := BasicTemp.ExecuteTemplate(buf, "union_case_unmarshal", map[string]any{
 		"Name": f.Name,
 		"Type": f.GetType(),
 		"Tag": f.UnionTag,
-		// "ValName": valName,
-		// "ValType": f.Field.GetType(),
-		// "InnerCode": string(innerBuf.Bytes()),
 	})
 	if err != nil { panic(err) }
 }
@@ -971,6 +998,9 @@ import (
 			"MarshalCode": string(unmarshBuf.Bytes()),
 		})
 		if err != nil { panic(err) }
+
+		// Special Union funcs
+		v.WriteUnionCodeToBuffer(&sd, buf)
 	}
 
 	for _, k := range toSort {

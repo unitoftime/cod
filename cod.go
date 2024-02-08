@@ -1,11 +1,20 @@
 package cod
 
-type Union struct {
-	value any
+const (
+	UnionEmpty uint8 = 0
+)
+
+type EncoderDecoder interface {
+	EncodeCod([]byte) []byte
+	// DecodeCod([]byte) (int, error) // Doesn't fit b/c its a pointer receiver
 }
-func (u Union) GetRawValue() any {
+
+type Union struct {
+	value EncoderDecoder
+}
+func (u Union) GetRawValue() EncoderDecoder {
 	return u.value
 }
-func (u *Union) PutRawValue(v any) {
+func (u *Union) PutRawValue(v EncoderDecoder) {
 	u.value = v
 }
