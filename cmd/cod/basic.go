@@ -18,6 +18,63 @@ func addStructTemplate(name string, dat string) {
 func init() {
 	BasicTemp = template.New("BasicTemp")
 
+	addTemplate("equality_func", `
+func (t {{.Name}})CodEquals(tt {{.Name}}) bool {
+{{.InnerCode}}
+   return true
+}
+`)
+	addTemplate("blank_equality_func", `
+func (t {{.Name}})CodEquals(tt {{.Name}}) bool {
+   return true
+}
+`)
+
+	addTemplate("basic_equality", `
+   if {{.Name}} != {{.Name2}} { return false }
+`)
+	addTemplate("struct_equality", `
+if !{{.Name}}.CodEquals({{.Name2}}) { return false }
+`)
+	addTemplate("array_equality", `
+for {{.Index}} := range {{.Name}} {
+   {{.InnerCode}}
+}`)
+	addTemplate("slice_equality", `
+{
+if len({{.Name}}) != len({{.Name2}}) { return false }
+for {{.Index}} := range {{.Name}} {
+   {{.InnerCode}}
+}
+}`)
+	addTemplate("map_equality", `
+{
+if len({{.Name}}) != len({{.Name2}}) { return false }
+for {{.KeyIdx}}, {{.ValIdx}} := range {{.Name}} {
+   t{{.ValIdx}}, ok := {{.Name2}}[{{.KeyIdx}}]
+   if !ok { return false }
+   {{.InnerCode}}
+}
+}`)
+	addTemplate("pointer_equality", `
+{
+   tNil := ({{.Name}} == nil)
+   ttNil := ({{.Name2}} == nil)
+   if tNil != ttNil { return false }
+   if !tNil && !ttNil {
+      {{.ValName}} := *{{.Name}}
+      t{{.ValName}} := *{{.Name2}}
+      {{.InnerCode}}
+   }
+}`)
+	addTemplate("alias_equality", `
+{
+   {{.ValName}} := {{.Type}}({{.Name}})
+   t{{.ValName}} := {{.Type}}({{.Name2}})
+   {{.InnerCode}}
+}`)
+
+	//--------------------------------------------------------------------------------
 	// Marshal/Unmarshal Functions
 	addTemplate("marshal_func", `
 func (t {{.Name}})EncodeCod(bs []byte) []byte {
@@ -210,6 +267,26 @@ func (t {{.Name}})Tag() uint8 {
 func (t {{.Name}})Size() int {
    return {{.Size}}
 }
+`)
+
+	addTemplate("union_equality_func", `
+func (t {{.Name}})CodEquals(tt {{.Name}}) bool {
+   if t.Tag() != tt.Tag() { return false }
+
+   rawVal := t.Get()
+   switch sv := rawVal.(type) {
+{{.InnerCode}}
+   default:
+      panic("unknown type placed in union")
+   }
+
+   return true
+}
+`)
+	addTemplate("union_case_equality", `
+   case {{.Type}}:
+      sv2 := tt.Get().({{.Type}})
+      return sv.CodEquals(sv2)
 `)
 
 	// TODO: Should I do uvarints for tags? 255 is an absolutely massive union...

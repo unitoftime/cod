@@ -1,10 +1,11 @@
-package main
+package test
 
 import (
 	"github.com/unitoftime/cod"
 	"github.com/unitoftime/cod/test/subpackage"
 	"github.com/unitoftime/cod/test/subpackage/blocked"
 )
+
 //go:generate go run ../cmd/cod
 
 //cod:struct

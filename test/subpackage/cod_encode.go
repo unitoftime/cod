@@ -38,5 +38,19 @@ func (t *Vec) DecodeCod(bs []byte) (int, error) {
 		t.Y = (decoded)
 	}
 
+	// println("Vec:", n)
 	return n, err
+}
+
+func (t Vec) CodEquals(tt Vec) bool {
+
+	if t.X != tt.X {
+		return false
+	}
+
+	if t.Y != tt.Y {
+		return false
+	}
+
+	return true
 }

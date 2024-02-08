@@ -436,6 +436,47 @@ func (v *Visitor) WriteUnionCodeToBuffer(s *StructData, buf io.Writer) {
 	}
 }
 
+
+func (v *Visitor) WriteEqualityCodeToBuffer(s *StructData, buf *bytes.Buffer) {
+	innerBuf := new(bytes.Buffer)
+
+	if s.Directive == DirectiveStruct {
+		for _, f := range s.Fields {
+			f.WriteEquality(innerBuf)
+		}
+		// Write the equality func
+		err := BasicTemp.ExecuteTemplate(buf, "equality_func", map[string]any{
+			"Name": s.Name,
+			"InnerCode": string(innerBuf.Bytes()),
+		})
+		if err != nil { panic(err) }
+
+	} else if s.Directive == DirectiveUnion {
+		// For unions we lookup the union def which must be the first csv element
+		unionDefName := s.DirectiveCSV[0]
+		unionDef, ok := v.structs[unionDefName]
+		if !ok { panic("Union def must be first element: //cod:union <UnionDefType>") }
+
+		for _, fInterface := range unionDef.Fields {
+			f := fInterface.(*UnionField)
+			err := BasicTemp.ExecuteTemplate(innerBuf, "union_case_equality", map[string]any{
+				"Name": f.Name,
+				"Name2": "t"+f.Name,
+				"Type": f.GetType(),
+				"Tag": f.UnionTag,
+			})
+			if err != nil { panic(err) }
+		}
+
+		err := BasicTemp.ExecuteTemplate(buf, "union_equality_func", map[string]any{
+			"Name": s.Name,
+			"InnerCode": string(innerBuf.Bytes()),
+		})
+		if err != nil { panic(err) }
+	}
+}
+
+
 func (v *Visitor) WriteStructMarshal(s *StructData, buf *bytes.Buffer) {
 	if s.Directive == DirectiveStruct {
 		for _, f := range s.Fields {
@@ -483,6 +524,7 @@ func (v *Visitor) WriteStructUnmarshal(s *StructData, buf *bytes.Buffer) {
 }
 
 type Field interface {
+	WriteEquality(*bytes.Buffer)
 	WriteMarshal(*bytes.Buffer)
 	WriteUnmarshal(*bytes.Buffer)
 	SetTag(string)
@@ -505,6 +547,33 @@ func (f *BasicField) SetTag(tag string) {
 }
 func (f *BasicField) GetType() string {
 	return f.Type
+}
+
+func (f BasicField) WriteEquality(buf *bytes.Buffer) {
+	cast := tagSearchCast(f.Tag)
+	debugPrintln("Cast: ", cast)
+
+	apiType := f.Type
+	if cast != "" {
+		apiType = cast
+	}
+
+	apiName, supported := supportedApis[apiType]
+	if supported {
+		err := BasicTemp.ExecuteTemplate(buf, "basic_equality", map[string]any{
+			"Name": f.Name,
+			"Name2": "t"+f.Name,
+			"ApiName": apiName,
+		})
+		if err != nil { panic(err) }
+	} else {
+		// debugPrintln("Found Struct: ", f.Name)
+		err := BasicTemp.ExecuteTemplate(buf, "struct_equality", map[string]any{
+			"Name": f.Name,
+			"Name2": "t"+f.Name,
+		})
+		if err != nil { panic(err) }
+	}
 }
 
 func (f BasicField) WriteMarshal(buf *bytes.Buffer) {
@@ -601,6 +670,20 @@ func (f *ArrayField) GetType() string {
 	return fmt.Sprintf("[%d]%s", f.Len, f.Field.GetType())
 }
 
+func (f ArrayField) WriteEquality(buf *bytes.Buffer) {
+	innerBuf := new(bytes.Buffer)
+	f.Field.WriteEquality(innerBuf)
+
+
+	err := BasicTemp.ExecuteTemplate(buf, "array_equality", map[string]any{
+		"Name": f.Name,
+		"Name2": "t"+f.Name,
+		"Index": fmt.Sprintf("i%d", f.IndexDepth),
+		"InnerCode": string(innerBuf.Bytes()),
+	})
+	if err != nil { panic(err) }
+}
+
 func (f ArrayField) WriteMarshal(buf *bytes.Buffer) {
 	innerBuf := new(bytes.Buffer)
 	f.Field.WriteMarshal(innerBuf)
@@ -645,6 +728,22 @@ func (f *SliceField) SetTag(tag string) {
 }
 func (f *SliceField) GetType() string {
 	return fmt.Sprintf("[]%s", f.Field.GetType())
+}
+
+func (f SliceField) WriteEquality(buf *bytes.Buffer) {
+	innerBuf := new(bytes.Buffer)
+	idxVar := fmt.Sprintf("i%d", f.IndexDepth)
+	f.Field.SetName(fmt.Sprintf("%s[%s]", f.Name, idxVar))
+	f.Field.WriteEquality(innerBuf)
+
+	err := BasicTemp.ExecuteTemplate(buf, "slice_equality", map[string]any{
+		"Name": f.Name,
+		"Name2": "t"+f.Name,
+		"Type": f.Field.GetType(),
+		"Index": idxVar,
+		"InnerCode": string(innerBuf.Bytes()),
+	})
+	if err != nil { panic(err) }
 }
 
 func (f SliceField) WriteMarshal(buf *bytes.Buffer) {
@@ -699,6 +798,27 @@ func (f *MapField) SetTag(tag string) {
 }
 func (f *MapField) GetType() string {
 	return fmt.Sprintf("map[%s]%s", f.Key.GetType(), f.Val.GetType())
+}
+
+func (f MapField) WriteEquality(buf *bytes.Buffer) {
+	innerBuf := new(bytes.Buffer)
+
+	keyIdxName := fmt.Sprintf("k%d", f.IndexDepth)
+	// f.Key.SetName(keyIdxName)
+	// f.Key.WriteEquality(innerBuf)
+
+	valIdxName := fmt.Sprintf("v%d", f.IndexDepth)
+	f.Val.SetName(valIdxName)
+	f.Val.WriteEquality(innerBuf)
+
+	err := BasicTemp.ExecuteTemplate(buf, "map_equality", map[string]any{
+		"Name": f.Name,
+		"Name2": "t"+f.Name,
+		"KeyIdx": keyIdxName,
+		"ValIdx": valIdxName,
+		"InnerCode": string(innerBuf.Bytes()),
+	})
+	if err != nil { panic(err) }
 }
 
 func (f MapField) WriteMarshal(buf *bytes.Buffer) {
@@ -767,6 +887,24 @@ func (f *AliasField) GetType() string {
 	return fmt.Sprintf("%s", f.Field.GetType())
 }
 
+func (f AliasField) WriteEquality(buf *bytes.Buffer) {
+	innerBuf := new(bytes.Buffer)
+
+	valName := fmt.Sprintf("value%d", f.IndexDepth)
+	f.Field.SetName(valName)
+	f.Field.WriteEquality(innerBuf)
+
+	err := BasicTemp.ExecuteTemplate(buf, "alias_equality", map[string]any{
+		"Name": f.Name,
+		"Name2": "t"+f.Name,
+		"AliasType": f.Name,
+		"Type": f.GetType(),
+		"ValName": valName,
+		"InnerCode": string(innerBuf.Bytes()),
+	})
+	if err != nil { panic(err) }
+}
+
 func (f AliasField) WriteMarshal(buf *bytes.Buffer) {
 	innerBuf := new(bytes.Buffer)
 
@@ -823,6 +961,16 @@ func (f *UnionField) GetType() string {
 	return f.Field.GetType()
 }
 
+func (f UnionField) WriteEquality(buf *bytes.Buffer) {
+	err := BasicTemp.ExecuteTemplate(buf, "union_case_equality", map[string]any{
+		"Name": f.Name,
+		"Name2": "t"+f.Name,
+		"Type": f.GetType(),
+		"Tag": f.UnionTag,
+	})
+	if err != nil { panic(err) }
+}
+
 //TODO: you could probably support basic types by just marshalling the f.Field code and putting it in the union case statement
 func (f UnionField) WriteMarshal(buf *bytes.Buffer) {
 	err := BasicTemp.ExecuteTemplate(buf, "union_case_marshal", map[string]any{
@@ -858,6 +1006,23 @@ func (f *PointerField) SetTag(tag string) {
 }
 func (f *PointerField) GetType() string {
 	return f.Field.GetType()
+}
+
+func (f PointerField) WriteEquality(buf *bytes.Buffer) {
+	innerBuf := new(bytes.Buffer)
+
+	valName := fmt.Sprintf("value%d", f.IndexDepth)
+	f.Field.SetName(valName)
+	f.Field.WriteEquality(innerBuf)
+
+	err := BasicTemp.ExecuteTemplate(buf, "pointer_equality", map[string]any{
+		"Name": f.Name,
+		"Name2": "t"+f.Name,
+		"Type": f.GetType(),
+		"ValName": valName,
+		"InnerCode": innerBuf.String(),
+	})
+	if err != nil { panic(err) }
 }
 
 //TODO: you could probably support basic types by just marshalling the f.Field code and putting it in the union case statement
@@ -977,6 +1142,11 @@ import (
 				"Name": sd.Name,
 			})
 			if err != nil { panic(err) }
+
+			err = BasicTemp.ExecuteTemplate(buf, "blank_equality_func", map[string]any{
+				"Name": sd.Name,
+			})
+			if err != nil { panic(err) }
 			continue
 		}
 
@@ -1001,6 +1171,9 @@ import (
 
 		// Special Union funcs
 		v.WriteUnionCodeToBuffer(&sd, buf)
+
+		// Special Equality operator
+		v.WriteEqualityCodeToBuffer(&sd, buf)
 	}
 
 	for _, k := range toSort {
