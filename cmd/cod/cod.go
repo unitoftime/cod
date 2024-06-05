@@ -280,7 +280,7 @@ func (v *Visitor) generateField(name string, idxDepth int, node ast.Node) Field 
 		return field
 
 	default:
-		panic(fmt.Sprintf("unknown type %T", expr))
+		panic(fmt.Sprintf("%s:, unknown type %T", name, expr))
 	}
 
 	return nil
@@ -1104,7 +1104,7 @@ import (
 		path, ok := v.imports[k]
 		debugPrintln("Used Import: ", k, path, ok)
 		if !ok {
-			panic("couldnt find import!")
+			panic(fmt.Sprintf("%s: couldnt find import: %s", path, k))
 		}
 		buf.WriteString("\n"+path+"\n")
 	}
