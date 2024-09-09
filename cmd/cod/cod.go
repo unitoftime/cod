@@ -19,7 +19,6 @@ import (
 
 	// "text/template"
 	"path/filepath"
-	"strconv"
 	// _ "embed"
 )
 
@@ -241,12 +240,25 @@ func (v *Visitor) generateField(name string, idxDepth int, node ast.Node) Field 
 			idxString := fmt.Sprintf("[i%d]", idxDepth)
 			field := v.generateField(name + idxString, idxDepth + 1, expr.Elt)
 
-			lString := expr.Len.(*ast.BasicLit).Value
-			length, err := strconv.Atoi(lString)
-			if err != nil { panic("ERR") }
+			lengthIdentName := ""
+
+			lString, ok := expr.Len.(*ast.Ident)
+			if ok {
+				lengthIdentName = lString.Name
+			} else {
+				blString, ok := expr.Len.(*ast.BasicLit)
+				if ok {
+					lengthIdentName = blString.Value
+				}
+			}
+
+			if lengthIdentName == "" {
+				panic("could not find array identifier")
+			}
+
 			return &ArrayField{
 				Name: name,
-				Len: length,
+				Len: lengthIdentName,
 				Field: field,
 				IndexDepth: idxDepth,
 			}
@@ -654,7 +666,7 @@ func (f BasicField) WriteUnmarshal(buf *bytes.Buffer) {
 type ArrayField struct {
 	Name string
 	Field Field
-	Len int
+	Len string
 	Tag string
 	IndexDepth int
 }
