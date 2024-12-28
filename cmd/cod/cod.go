@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"os"
 	"sort"
@@ -79,6 +80,8 @@ func generatePackage(dir string) {
 			pkg: pkg,
 			fset: fset,
 			// lastCommentPos: &tokenStart,
+			requests: make(map[string][]GenRequest),
+
 			structs: make(map[string]StructData),
 			imports: make(map[string]string),
 			usedImports: make(map[string]bool),
@@ -104,8 +107,15 @@ func (v *Visitor) formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (Stru
 	for _, spec := range decl.Specs {
 		switch s := spec.(type) {
 		case *ast.TypeSpec:
-			directive, directiveCSV := getDirective(decl)
+			add := v.getRequests(s.Name.Name, decl)
+
+			directive, directiveCSV := v.getDirective(decl)
 			if directive == DirectiveNone {
+				if add {
+					structData.Name = s.Name.Name
+					return structData, true
+				}
+
 				return structData, false
 			}
 
@@ -298,7 +308,32 @@ func (v *Visitor) generateField(name string, idxDepth int, node ast.Node) Field 
 	return nil
 }
 
-func getDirective(t ast.GenDecl) (DirectiveType, []string) {
+func (v *Visitor) getRequests(name string, t ast.GenDecl) bool {
+	if t.Doc == nil {
+		return false
+	}
+
+	for _, c := range t.Doc.List {
+		after, found := strings.CutPrefix(c.Text, "//cod:component")
+		if found {
+			v.usedImports["ecs"] = true
+			v.imports["ecs"] = "\"github.com/unitoftime/ecs\""
+
+			csv := strings.Split(after, ",")
+			for i := range csv {
+				csv[i] = strings.TrimSpace(csv[i])
+			}
+
+			v.requests[name] = append(v.requests[name], GenRequest{
+				Type: RequestTypeComponent,
+				CSV: csv,
+			})
+		}
+	}
+	return (len(v.requests[name]) > 0)
+}
+
+func (v *Visitor) getDirective(t ast.GenDecl) (DirectiveType, []string) {
 	if t.Doc == nil {
 		return DirectiveNone, nil
 	}
@@ -306,6 +341,9 @@ func getDirective(t ast.GenDecl) (DirectiveType, []string) {
 	for _, c := range t.Doc.List {
 		after, foundStruct := strings.CutPrefix(c.Text, "//cod:struct")
 		if foundStruct {
+			v.usedImports["backend"] = true
+			v.imports["backend"] = "\"github.com/unitoftime/cod/backend\""
+
 			csv := strings.Split(after, ",")
 			for i := range csv {
 				csv[i] = strings.TrimSpace(csv[i])
@@ -337,11 +375,27 @@ func getDirective(t ast.GenDecl) (DirectiveType, []string) {
 	return DirectiveNone, nil
 }
 
+type RequestType int
+const (
+	RequestTypeComponent RequestType = iota
+)
+type GenRequest struct {
+	Type RequestType
+	CSV []string
+}
+type StructData2 struct {
+	Name string
+	Fields []Field
+}
+
 type Visitor struct {
 	pkg *ast.Package  // The package that we are processing
 	fset *token.FileSet // The fileset of the package we are processing
 	file *ast.File // The file we are currently processing (Can be nil if we haven't started processing a file yet!)
 	cmap ast.CommentMap // The comment map of the file we are processing
+
+	requests map[string][]GenRequest
+	structs2 map[string]StructData2
 
 	structs map[string]StructData
 	imports map[string]string // Maps a selector source to a package path
@@ -1100,30 +1154,39 @@ const (
 func (v *Visitor) Output(filename string) {
 	buf := bytes.NewBuffer([]byte{})
 	buf.WriteString("package " + v.pkg.Name)
+
+	if len(v.usedImports) > 0 {
 		buf.WriteString(`
 import (
-	"github.com/unitoftime/cod/backend"
 `)
 
-	toSort := make([]string, 0)
-	for k := range v.usedImports {
-		toSort = append(toSort, k)
-	}
-	sort.Strings(toSort)
 
-	for _, k := range toSort {
-		debugPrintln("Used Import: ", k)
-		path, ok := v.imports[k]
-		debugPrintln("Used Import: ", k, path, ok)
-		if !ok {
-			panic(fmt.Sprintf("%s: couldnt find import: %s", path, k))
+		// 	buf.WriteString(`
+		// import (
+		// 	"github.com/unitoftime/cod/backend"
+		// `)
+
+		toSort := make([]string, 0)
+		for k := range v.usedImports {
+			toSort = append(toSort, k)
 		}
-		buf.WriteString("\n"+path+"\n")
-	}
+		sort.Strings(toSort)
+
+		for _, k := range toSort {
+			debugPrintln("Used Import: ", k)
+			path, ok := v.imports[k]
+			debugPrintln("Used Import: ", k, path, ok)
+			if !ok {
+				// fmt.Printf("%s: couldnt find import: %s\n", path, k)
+				panic(fmt.Sprintf("%s: couldnt find import: %s", path, k))
+			}
+			buf.WriteString("\n"+path+"\n")
+		}
 		buf.WriteString(`
 )`)
+	}
 
-	toSort = toSort[:0]
+	toSort := make([]string, 0)
 	for k := range v.structs {
 		toSort = append(toSort, k)
 	}
@@ -1133,7 +1196,7 @@ import (
 	unmarshBuf := bytes.NewBuffer([]byte{})
 	for _, k := range toSort {
 		sd, _ := v.structs[k]
-	// for _, sd := range v.structs {
+		if sd.Directive == DirectiveNone { continue }
 		if sd.Directive == DirectiveUnionDef { continue }
 
 		marshBuf.Reset()
@@ -1190,7 +1253,6 @@ import (
 
 	for _, k := range toSort {
 		sd, _ := v.structs[k]
-	// for _, sd := range v.structs {
 		if sd.Directive != DirectiveUnion { continue }
 
 		// Create constructors, getters, setters per union type
@@ -1208,17 +1270,47 @@ import (
 		if err != nil { panic(err) }
 	}
 
+	for _, k := range toSort {
+		sd, _ := v.structs[k]
+		for _, req := range v.requests[k] {
+			switch req.Type {
+			case RequestTypeComponent:
+				err := BasicTemp.ExecuteTemplate(buf, "ecs_component", map[string]any{
+					"Name": sd.Name,
+				})
+				if err != nil { panic(err) }
+			}
+		}
+	}
+
+	outputFile(filename, buf)
+}
+
+func formatFile(buf *bytes.Buffer) []byte {
 	formatted, err := format.Source(buf.Bytes())
 	if err != nil {
-		err = os.WriteFile(filename, buf.Bytes(), fs.ModePerm)
-		if err != nil {
-			panic(err)
-		}
+		return buf.Bytes()
+	}
+	return formatted
+}
+
+func outputFile(filename string, buf *bytes.Buffer) {
+	formatted := formatFile(buf)
+
+	// Check to see if the file will change
+	oldFile, err := os.ReadFile(filename)
+	if err != nil {
+		fmt.Println("Error reading last cod file:", err)
+	}
+
+	oldSum := crc32.ChecksumIEEE(oldFile)
+	newSum := crc32.ChecksumIEEE(formatted)
+	if oldSum == newSum {
+		fmt.Println("Skipping Write: Files match")
 		return
 	}
 
 	err = os.WriteFile(filename, formatted, fs.ModePerm)
-	// err = os.WriteFile(filename, buf.Bytes(), fs.ModePerm)
 	if err != nil {
 		panic(err)
 	}

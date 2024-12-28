@@ -18,6 +18,20 @@ func addStructTemplate(name string, dat string) {
 func init() {
 	BasicTemp = template.New("BasicTemp")
 
+	// --- Component
+	addTemplate("ecs_component", `
+var {{.Name}}Comp = ecs.NewComp[{{.Name}}]()
+func (c {{.Name}}) CompId() ecs.CompId {
+	return {{.Name}}Comp.CompId()
+}
+
+func (c {{.Name}}) CompWrite(w ecs.W) {
+	{{.Name}}Comp.WriteVal(w, c)
+}
+`)
+
+
+	// --- Equality
 	addTemplate("equality_func", `
 func (t {{.Name}})CodEquals(tt {{.Name}}) bool {
 {{.InnerCode}}

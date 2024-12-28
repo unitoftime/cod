@@ -7,6 +7,8 @@ import (
 
 	"github.com/unitoftime/cod"
 
+	"github.com/unitoftime/ecs"
+
 	"github.com/unitoftime/cod/test/subpackage"
 )
 
@@ -1076,4 +1078,13 @@ func NewMyUnion(v cod.EncoderDecoder) MyUnion {
 	var ret MyUnion
 	ret.Set(v)
 	return ret
+}
+
+var BlockedStructComp = ecs.Comp(BlockedStruct{})
+
+func (c BlockedStruct) CompId() ecs.CompId {
+	return BlockedStructComp.CompId()
+}
+func (c BlockedStruct) CompWrite(w ecs.W) {
+	BlockedStructComp.WriteVal(w, c)
 }
