@@ -354,6 +354,9 @@ func (v *Visitor) getDirective(t ast.GenDecl) (DirectiveType, []string) {
 
 		after, foundUnion := strings.CutPrefix(c.Text, "//cod:union")
 		if foundUnion {
+			v.usedImports["fmt"] = true // Some panic statements require fmt
+			v.imports["fmt"] = "\"fmt\""
+
 			csv := strings.Split(after, ",")
 			for i := range csv {
 				csv[i] = strings.TrimSpace(csv[i])
@@ -616,8 +619,16 @@ func (f *BasicField) GetType() string {
 }
 
 func (f BasicField) WriteEquality(buf *bytes.Buffer) {
+	skip := tagSearchSkip(f.Tag)
+	debugPrintln("Skip: ", skip)
 	cast := tagSearchCast(f.Tag)
 	debugPrintln("Cast: ", cast)
+
+	// Don't add if this is set to skip
+	if shouldSkipEquality(skip) {
+		return
+	}
+
 
 	apiType := f.Type
 	if cast != "" {
@@ -733,7 +744,7 @@ func (f *ArrayField) SetTag(tag string) {
 	f.Field.SetTag(tag)
 }
 func (f *ArrayField) GetType() string {
-	return fmt.Sprintf("[%d]%s", f.Len, f.Field.GetType())
+	return fmt.Sprintf("[%s]%s", f.Len, f.Field.GetType())
 }
 
 func (f ArrayField) WriteEquality(buf *bytes.Buffer) {
@@ -1338,4 +1349,33 @@ func tagSearchCast(tag string) string {
 		return val
 	}
 	return ""
+}
+
+
+func tagSearchSkip(tag string) string {
+	// `bson:"pageId" json:"pageId"`
+	// Example: `cod.skip:"equality"`
+
+	split := strings.Split(tag, " ")
+
+	// debugPrintln("AAA")
+	// debugPrintln(split)
+	for _, s := range split {
+		s = strings.TrimSpace(s)
+		// debugPrintln(s)
+
+		valQuoted, ok := strings.CutPrefix(s, "`cod.skip:")
+		if !ok { continue }
+		// debugPrintln(valQuoted)
+
+		val := strings.Trim(valQuoted, "\"`")
+		// debugPrintln(val)
+		return val
+	}
+	return ""
+}
+
+func shouldSkipEquality(skipString string) bool {
+	// TODO: Change to CSV
+	return skipString == "equality"
 }

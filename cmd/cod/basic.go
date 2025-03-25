@@ -266,7 +266,7 @@ func (t {{.Name}})Tag() uint8 {
    switch rawVal.(type) {
 {{.InnerCode}}
    default:
-      panic("unknown type placed in union")
+      panic(fmt.Sprintf("unknown type placed in union: %T", rawVal))
    }
 }
 `)
@@ -291,7 +291,7 @@ func (t {{.Name}})CodEquals(tt {{.Name}}) bool {
    switch sv := rawVal.(type) {
 {{.InnerCode}}
    default:
-      panic("unknown type placed in union")
+      panic(fmt.Sprintf("unknown type placed in union: %T", rawVal))
    }
 
    return true
