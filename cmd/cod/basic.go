@@ -1,17 +1,12 @@
 package main
 
 import (
-	// "bytes"
 	"text/template"
 )
 
 var BasicTemp *template.Template
 
 func addTemplate(name string, dat string) {
-	template.Must(BasicTemp.New(name).Parse(dat))
-}
-
-func addStructTemplate(name string, dat string) {
 	template.Must(BasicTemp.New(name).Parse(dat))
 }
 

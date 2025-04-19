@@ -1,6 +1,8 @@
 package main
 
-import "strings"
+import (
+	"strings"
+)
 
 func tagSearchCast(tag string) string {
 	// `bson:"pageId" json:"pageId"`

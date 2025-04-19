@@ -29,7 +29,7 @@ func outputFile(filename string, buf *bytes.Buffer) {
 	oldSum := crc32.ChecksumIEEE(oldFile)
 	newSum := crc32.ChecksumIEEE(formatted)
 	if oldSum == newSum {
-		fmt.Println("Skipping Write: Files match")
+		// fmt.Println("Skipping Write: Files match")
 		return
 	}
 

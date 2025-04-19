@@ -26,6 +26,16 @@ func (t BlankStruct) CodEquals(tt BlankStruct) bool {
 	return true
 }
 
+var BlockedStructComp = ecs.NewComp[BlockedStruct]()
+
+func (c BlockedStruct) CompId() ecs.CompId {
+	return BlockedStructComp.CompId()
+}
+
+func (c BlockedStruct) CompWrite(w ecs.W) {
+	BlockedStructComp.WriteVal(w, c)
+}
+
 func (t BlockedStruct) EncodeCod(bs []byte) []byte {
 
 	bs = backend.WriteVarUint64(bs, uint64(t.Basic))
@@ -355,6 +365,40 @@ func (t MyUnion) CodEquals(tt MyUnion) bool {
 	}
 
 	return true
+}
+
+func (t MyUnion) Get() cod.EncoderDecoder {
+	codUnion := cod.Union(t)
+	rawVal := codUnion.GetRawValue()
+	return rawVal
+
+	// switch rawVal.(type) {
+	// <no value>
+	// default:
+	//    panic("unknown type placed in union")
+	// }
+}
+
+func (t *MyUnion) Set(v cod.EncoderDecoder) {
+	codUnion := cod.Union(*t)
+	codUnion.PutRawValue(v)
+	*t = MyUnion(codUnion)
+
+	// switch tagVal {
+	// case 0: // Zero tag indicates nil
+	//    return nil
+
+	// <no value>
+	// default:
+	//    panic("unknown type placed in union")
+	// }
+	// return err
+}
+
+func NewMyUnion(v cod.EncoderDecoder) MyUnion {
+	var ret MyUnion
+	ret.Set(v)
+	return ret
 }
 
 func (t Person) EncodeCod(bs []byte) []byte {
@@ -1046,48 +1090,4 @@ func (t SpecialMap) CodEquals(tt SpecialMap) bool {
 		}
 	}
 	return true
-}
-
-func (t MyUnion) Get() cod.EncoderDecoder {
-	codUnion := cod.Union(t)
-	rawVal := codUnion.GetRawValue()
-	return rawVal
-
-	// switch rawVal.(type) {
-	// <no value>
-	// default:
-	//    panic("unknown type placed in union")
-	// }
-}
-
-func (t *MyUnion) Set(v cod.EncoderDecoder) {
-	codUnion := cod.Union(*t)
-	codUnion.PutRawValue(v)
-	*t = MyUnion(codUnion)
-
-	// switch tagVal {
-	// case 0: // Zero tag indicates nil
-	//    return nil
-
-	// <no value>
-	// default:
-	//    panic("unknown type placed in union")
-	// }
-	// return err
-}
-
-func NewMyUnion(v cod.EncoderDecoder) MyUnion {
-	var ret MyUnion
-	ret.Set(v)
-	return ret
-}
-
-var BlockedStructComp = ecs.NewComp[BlockedStruct]()
-
-func (c BlockedStruct) CompId() ecs.CompId {
-	return BlockedStructComp.CompId()
-}
-
-func (c BlockedStruct) CompWrite(w ecs.W) {
-	BlockedStructComp.WriteVal(w, c)
 }
