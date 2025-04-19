@@ -3,24 +3,18 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"hash/crc32"
 	"io"
-	"os"
+	"io/fs"
 	"sort"
 	"strings"
+	"time"
 
-	// "math"
 	"go/ast"
 	"go/parser"
-	"io/fs"
 
-	// "go/printer"
-	"go/format"
 	"go/token"
 
-	// "text/template"
 	"path/filepath"
-	// _ "embed"
 )
 
 // List of supported reads and writes
@@ -47,23 +41,24 @@ var supportedApis = map[string]string{
 	"bool": "Bool",
 }
 
-var enableDebug = false
-
-func debugPrintf(format string, a ...any) {
-	if enableDebug {
-		fmt.Printf(format, a...)
-	}
-}
-
-func debugPrintln(a ...any) {
-	if enableDebug {
-		fmt.Println(a...)
-	}
-}
-
-
 func main() {
-	generatePackage(".")
+	now := time.Now()
+	defer printDuration("main", now)
+
+	// newMain()
+	// generatePackage(".")
+	generateAll(".")
+}
+
+func generateAll(dir string) {
+	filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if !d.IsDir() { return nil } // Skip if not the directory
+
+		fullPath := filepath.Join(dir, path)
+		fmt.Println("generatePackage:", fullPath)
+		generatePackage(fullPath)
+		return nil
+	})
 }
 
 func generatePackage(dir string) {
@@ -90,7 +85,7 @@ func generatePackage(dir string) {
 		// We start walking our Visitor `bv` through the AST in a depth-first way.
 		ast.Walk(bv, pkg)
 
-		bv.Output("cod_encode.go")
+		bv.Output(filepath.Join(dir, "cod_encode.go"))
 	}
 }
 func (v *Visitor) formatGen(decl ast.GenDecl, cGroups []*ast.CommentGroup) (StructData, bool) {
@@ -401,6 +396,7 @@ type Visitor struct {
 	structs2 map[string]StructData2
 
 	structs map[string]StructData
+
 	imports map[string]string // Maps a selector source to a package path
 	usedImports map[string]bool // List of encoded selector expressions
 }
@@ -1194,6 +1190,11 @@ const (
 
 
 func (v *Visitor) Output(filename string) {
+	if len(v.requests) == 0 && len(v.structs2) == 0 && len(v.structs) == 0 {
+		fmt.Println("Skipping: No tagged structs:", filename)
+		return
+	}
+
 	buf := bytes.NewBuffer([]byte{})
 	buf.WriteString("package " + v.pkg.Name)
 
@@ -1326,90 +1327,4 @@ import (
 	}
 
 	outputFile(filename, buf)
-}
-
-func formatFile(buf *bytes.Buffer) []byte {
-	formatted, err := format.Source(buf.Bytes())
-	if err != nil {
-		return buf.Bytes()
-	}
-	return formatted
-}
-
-func outputFile(filename string, buf *bytes.Buffer) {
-	formatted := formatFile(buf)
-
-	// Check to see if the file will change
-	oldFile, err := os.ReadFile(filename)
-	if err != nil {
-		fmt.Println("Error reading last cod file:", err)
-	}
-
-	oldSum := crc32.ChecksumIEEE(oldFile)
-	newSum := crc32.ChecksumIEEE(formatted)
-	if oldSum == newSum {
-		fmt.Println("Skipping Write: Files match")
-		return
-	}
-
-	err = os.WriteFile(filename, formatted, fs.ModePerm)
-	if err != nil {
-		panic(err)
-	}
-}
-
-
-func tagSearchCast(tag string) string {
-	// `bson:"pageId" json:"pageId"`
-	// Example: `cod.cast:"uint64"`
-
-	split := strings.Split(tag, " ")
-
-	// debugPrintln("AAA")
-	// debugPrintln(split)
-	for _, s := range split {
-		s = strings.TrimSpace(s)
-		// debugPrintln(s)
-
-		valQuoted, ok := strings.CutPrefix(s, "`cod.cast:")
-		if !ok { continue }
-		// debugPrintln(valQuoted)
-
-		val := strings.Trim(valQuoted, "\"`")
-		// debugPrintln(val)
-		return val
-	}
-	return ""
-}
-
-
-func tagSearchSkip(tag string) string {
-	// `bson:"pageId" json:"pageId"`
-	// Example: `cod.skip:"equality"`
-
-	split := strings.Split(tag, " ")
-
-	// debugPrintln("AAA")
-	// debugPrintln(split)
-	for _, s := range split {
-		s = strings.TrimSpace(s)
-		// debugPrintln(s)
-
-		valQuoted, ok := strings.CutPrefix(s, "`cod.skip:")
-		if !ok { continue }
-		// debugPrintln(valQuoted)
-
-		val := strings.Trim(valQuoted, "\"`")
-		// debugPrintln(val)
-		return val
-	}
-	return ""
-}
-
-func shouldSkipEquality(skipString string) bool {
-	return strings.Contains(skipString, "equality")
-}
-func shouldSkipSerdes(tag string) bool {
-	skip := tagSearchSkip(tag)
-	return strings.Contains(skip, "serdes")
 }

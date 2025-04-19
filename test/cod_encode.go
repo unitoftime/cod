@@ -9,6 +9,8 @@ import (
 
 	"github.com/unitoftime/ecs"
 
+	"fmt"
+
 	"github.com/unitoftime/cod/test/subpackage"
 )
 
@@ -320,7 +322,7 @@ func (t MyUnion) Tag() uint8 {
 		return 3
 
 	default:
-		panic("unknown type placed in union")
+		panic(fmt.Sprintf("unknown type placed in union: %T", rawVal))
 	}
 }
 
@@ -349,7 +351,7 @@ func (t MyUnion) CodEquals(tt MyUnion) bool {
 		return sv.CodEquals(sv2)
 
 	default:
-		panic("unknown type placed in union")
+		panic(fmt.Sprintf("unknown type placed in union: %T", rawVal))
 	}
 
 	return true
@@ -1080,11 +1082,12 @@ func NewMyUnion(v cod.EncoderDecoder) MyUnion {
 	return ret
 }
 
-var BlockedStructComp = ecs.Comp(BlockedStruct{})
+var BlockedStructComp = ecs.NewComp[BlockedStruct]()
 
 func (c BlockedStruct) CompId() ecs.CompId {
 	return BlockedStructComp.CompId()
 }
+
 func (c BlockedStruct) CompWrite(w ecs.W) {
 	BlockedStructComp.WriteVal(w, c)
 }
