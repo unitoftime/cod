@@ -654,8 +654,15 @@ func (f BasicField) WriteEquality(buf *bytes.Buffer) {
 }
 
 func (f BasicField) WriteMarshal(buf *bytes.Buffer) {
+	skip := tagSearchSkip(f.Tag)
+	debugPrintln("Skip: ", skip)
 	cast := tagSearchCast(f.Tag)
 	debugPrintln("Cast: ", cast)
+
+	// Don't add if this is set to skip
+	if shouldSkipSerdes(skip) {
+		return
+	}
 
 	apiType := f.Type
 	if cast != "" {
@@ -680,6 +687,8 @@ func (f BasicField) WriteMarshal(buf *bytes.Buffer) {
 }
 
 func (f BasicField) WriteUnmarshal(buf *bytes.Buffer) {
+	if shouldSkipSerdes(f.Tag) { return }
+
 	cast := tagSearchCast(f.Tag)
 	debugPrintln("Cast: ", cast)
 
@@ -762,6 +771,8 @@ func (f ArrayField) WriteEquality(buf *bytes.Buffer) {
 }
 
 func (f ArrayField) WriteMarshal(buf *bytes.Buffer) {
+	if shouldSkipSerdes(f.Tag) { return }
+
 	innerBuf := new(bytes.Buffer)
 	f.Field.WriteMarshal(innerBuf)
 
@@ -776,6 +787,8 @@ func (f ArrayField) WriteMarshal(buf *bytes.Buffer) {
 
 
 func (f ArrayField) WriteUnmarshal(buf *bytes.Buffer) {
+	if shouldSkipSerdes(f.Tag) { return }
+
 	innerBuf := new(bytes.Buffer)
 	f.Field.WriteUnmarshal(innerBuf)
 
@@ -824,6 +837,8 @@ func (f SliceField) WriteEquality(buf *bytes.Buffer) {
 }
 
 func (f SliceField) WriteMarshal(buf *bytes.Buffer) {
+	if shouldSkipSerdes(f.Tag) { return }
+
 	innerBuf := new(bytes.Buffer)
 	idxVar := fmt.Sprintf("i%d", f.IndexDepth)
 	f.Field.SetName(fmt.Sprintf("%s[%s]", f.Name, idxVar))
@@ -840,6 +855,8 @@ func (f SliceField) WriteMarshal(buf *bytes.Buffer) {
 
 
 func (f SliceField) WriteUnmarshal(buf *bytes.Buffer) {
+	if shouldSkipSerdes(f.Tag) { return }
+
 	innerBuf := new(bytes.Buffer)
 	varName := fmt.Sprintf("value%d", f.IndexDepth)
 	f.Field.SetName(varName)
@@ -899,6 +916,8 @@ func (f MapField) WriteEquality(buf *bytes.Buffer) {
 }
 
 func (f MapField) WriteMarshal(buf *bytes.Buffer) {
+	if shouldSkipSerdes(f.Tag) { return }
+
 	innerBuf := new(bytes.Buffer)
 
 	keyIdxName := fmt.Sprintf("k%d", f.IndexDepth)
@@ -920,6 +939,8 @@ func (f MapField) WriteMarshal(buf *bytes.Buffer) {
 
 
 func (f MapField) WriteUnmarshal(buf *bytes.Buffer) {
+	if shouldSkipSerdes(f.Tag) { return }
+
 	innerBuf := new(bytes.Buffer)
 	keyVarName := fmt.Sprintf("key%d", f.IndexDepth)
 	f.Key.SetName(keyVarName)
@@ -983,6 +1004,8 @@ func (f AliasField) WriteEquality(buf *bytes.Buffer) {
 }
 
 func (f AliasField) WriteMarshal(buf *bytes.Buffer) {
+	if shouldSkipSerdes(f.Tag) { return }
+
 	innerBuf := new(bytes.Buffer)
 
 	valName := fmt.Sprintf("value%d", f.IndexDepth)
@@ -1001,6 +1024,8 @@ func (f AliasField) WriteMarshal(buf *bytes.Buffer) {
 
 
 func (f AliasField) WriteUnmarshal(buf *bytes.Buffer) {
+	if shouldSkipSerdes(f.Tag) { return }
+
 	innerBuf := new(bytes.Buffer)
 	valName := fmt.Sprintf("value%d", f.IndexDepth)
 	f.Field.SetName(valName)
@@ -1104,6 +1129,9 @@ func (f PointerField) WriteEquality(buf *bytes.Buffer) {
 
 //TODO: you could probably support basic types by just marshalling the f.Field code and putting it in the union case statement
 func (f PointerField) WriteMarshal(buf *bytes.Buffer) {
+	// TODO: f.Field has the tag
+	// if shouldSkipSerdes(f.Tag) { return }
+
 	innerBuf := new(bytes.Buffer)
 
 	valName := fmt.Sprintf("value%d", f.IndexDepth)
@@ -1121,6 +1149,9 @@ func (f PointerField) WriteMarshal(buf *bytes.Buffer) {
 
 
 func (f PointerField) WriteUnmarshal(buf *bytes.Buffer) {
+	// TODO: f.Field has the tag
+	// if shouldSkipSerdes(f.Tag) { return }
+
 	innerBuf := new(bytes.Buffer)
 	valName := fmt.Sprintf("value%d", f.IndexDepth)
 	f.Field.SetName(valName)
@@ -1376,6 +1407,9 @@ func tagSearchSkip(tag string) string {
 }
 
 func shouldSkipEquality(skipString string) bool {
-	// TODO: Change to CSV
-	return skipString == "equality"
+	return strings.Contains(skipString, "equality")
+}
+func shouldSkipSerdes(tag string) bool {
+	skip := tagSearchSkip(tag)
+	return strings.Contains(skip, "serdes")
 }
