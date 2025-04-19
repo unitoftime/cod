@@ -8,7 +8,7 @@ import (
 
 //go:generate go run ../cmd/cod
 
-//cod:component
+// //cod:component
 //cod:struct
 type BlockedStruct struct {
 	Basic blocked.Basic `cod.cast:"uint64"`

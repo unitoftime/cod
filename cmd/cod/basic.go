@@ -25,6 +25,14 @@ func (c {{.Name}}) CompWrite(w ecs.W) {
 }
 `)
 
+	// --- Component
+	addTemplate("ecs_event", `
+var {{.Name}}EventId = ecs.NewEvent[{{.Name}}]()
+func (p {{.Name}}) EventId() ecs.EventId {
+	return {{.Name}}EventId
+}
+`)
+
 
 	// --- Equality
 	addTemplate("equality_func", `
