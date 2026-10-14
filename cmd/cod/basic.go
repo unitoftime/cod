@@ -25,7 +25,7 @@ func (c {{.Name}}) CompWrite(w ecs.W) {
 }
 `)
 
-	// --- Component
+	// --- Event
 	addTemplate("ecs_event", `
 var {{.Name}}EventId = ecs.NewEvent[{{.Name}}]()
 func (p {{.Name}}) EventId() ecs.EventId {
@@ -402,6 +402,7 @@ func (t *{{.Name}}) Set(v cod.EncoderDecoder) {
    codUnion := cod.Union(*t)
    codUnion.PutRawValue(v)
    *t = {{.Name}}(codUnion)
+   t.Tag()
 
    // switch tagVal {
    // case 0: // Zero tag indicates nil

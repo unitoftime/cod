@@ -207,9 +207,11 @@ func readByteSlice(bs []byte) ([]byte, int, error) {
 	l, n, err := ReadVarUint64(bs)
 	if err != nil { return nil, 0, err }
 
+	// Note: The length comes off the wire, so we compare it before converting it to an int. A huge length would wrap to a negative int and get past the check below
+	if l > uint64(len(bs) - n) { return nil, 0, ErrTruncatedData }
+
 	startRead := n
 	endRead := n + int(l)
-	if len(bs) < endRead { return nil, 0, ErrTruncatedData }
 
 	ret := bs[startRead:endRead]
 	return ret, endRead, nil

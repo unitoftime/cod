@@ -382,7 +382,7 @@ func (v *Visitor) Output(filename string) {
 
 	// Generate all of the requests
 	for _, k := range toSort {
-		sd, _ := v.structs[k]
+		sd := v.structs[k]
 		for _, req := range v.requests[k] {
 			switch req.Type {
 			case RequestTypeComponent:
@@ -433,7 +433,7 @@ import (
 			debugPrintln("Used Import: ", k, path, ok)
 			if !ok {
 				// fmt.Printf("%s: couldnt find import: %s\n", path, k)
-				panic(fmt.Sprintf("%s: couldnt find import: %s", path, k))
+				panic(fmt.Sprintf("%v: couldnt find import: %s", v.pkg, k))
 			}
 			buf.WriteString("\n"+path+"\n")
 		}
