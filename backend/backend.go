@@ -196,7 +196,7 @@ func ReadVarInt64(bs []byte) (int64, int, error) {
 //--------------------------------------------------------------------------------
 // Complex types
 //--------------------------------------------------------------------------------
-func writeByteSlice(bs []byte, v []byte) []byte {
+func writeByteSlice[T string | []byte](bs []byte, v T) []byte {
 	bs = WriteVarUint64(bs, uint64(len(v)))
 	bs = append(bs, v...)
 	return bs
@@ -218,17 +218,15 @@ func readByteSlice(bs []byte) ([]byte, int, error) {
 }
 
 func WriteString(bs []byte, v string) []byte {
-	return writeByteSlice(bs, []byte(v))
+	return writeByteSlice(bs, v)
 }
 
 func ReadString(bs []byte) (string, int, error) {
 	dat, n, err := readByteSlice(bs)
 	if err != nil { return "", 0, err }
 
-	// TODO: Double check how string casting works, does it do a copy?
-	datCopy := make([]byte, len(dat))
-	copy(datCopy, dat)
-	return string(datCopy), n, nil
+	// Note: The string conversion copies, so the string never aliases bs
+	return string(dat), n, nil
 }
 
 

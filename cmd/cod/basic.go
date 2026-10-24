@@ -288,21 +288,21 @@ func (t {{.Name}})Size() int {
 
 	addTemplate("union_equality_func", `
 func (t {{.Name}})CodEquals(tt {{.Name}}) bool {
-   if t.Tag() != tt.Tag() { return false }
-
    rawVal := t.Get()
    switch sv := rawVal.(type) {
+   case nil:
+      return tt.Get() == nil
 {{.InnerCode}}
    default:
       panic(fmt.Sprintf("unknown type placed in union: %T", rawVal))
    }
-
-   return true
 }
 `)
+	// Note: A failed assertion means tt holds a different type, so this replaces comparing the tags
 	addTemplate("union_case_equality", `
    case {{.Type}}:
-      sv2 := tt.Get().({{.Type}})
+      sv2, ok := tt.Get().({{.Type}})
+      if !ok { return false }
       return sv.CodEquals(sv2)
 `)
 
@@ -346,14 +346,19 @@ func (t {{.Name}})CodEquals(tt {{.Name}}) bool {
    if err != nil { return 0, err }
    n += nOff
 
+   var val cod.EncoderDecoder
    switch tagVal {
    case 0: // Zero tag indicates nil
-      return 0, nil
 
    {{.InnerCode}}
    default:
       return 0, backend.ErrUnknownUnionType
    }
+
+   // Note: Stored directly rather than through Set(), because the tag already decided the type
+   codUnion := cod.Union{}
+   codUnion.PutRawValue(val)
+   *t = {{.Name}}(codUnion)
 `)
 
 	// Union cases
@@ -370,7 +375,7 @@ func (t {{.Name}})CodEquals(tt {{.Name}}) bool {
       if err != nil { return 0, err }
       n += nOff
 
-      t.Set(decoded)
+      val = decoded
 `)
 
 	// Union getters and setters

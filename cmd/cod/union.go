@@ -114,6 +114,7 @@ func WriteUnionUnmarshal(sd StructData, csv []string, structs map[string]StructD
 	}
 
 	err := BasicTemp.ExecuteTemplate(buf, "union_unmarshal", map[string]any{
+		"Name": sd.Name,
 		"InnerCode": innerBuf.String(),
 	})
 	if err != nil { panic(err) }
